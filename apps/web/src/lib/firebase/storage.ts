@@ -1,14 +1,19 @@
 /**
- * Cloud Storage accessor (Phase 1 §35). Used for product photos and the business logo
- * in later phases (LEGACY-COMPATIBILITY §47).
+ * Cloud Storage accessor (Phase 2). Product photos and the business logo (LEGACY-COMPATIBILITY
+ * §47). Emulator wiring for development.
  */
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 import { getFirebaseApp } from './app';
+import { appConfig } from '@/config/env';
 
 let cachedStorage: FirebaseStorage | null = null;
 
 export function getFirebaseStorage(): FirebaseStorage {
   if (cachedStorage) return cachedStorage;
-  cachedStorage = getStorage(getFirebaseApp());
+  const storage = getStorage(getFirebaseApp());
+  if (appConfig.useEmulators) {
+    connectStorageEmulator(storage, '127.0.0.1', 9199);
+  }
+  cachedStorage = storage;
   return cachedStorage;
 }

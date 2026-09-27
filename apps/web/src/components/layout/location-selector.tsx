@@ -1,5 +1,5 @@
 import { MapPin } from 'lucide-react';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 import {
   Select,
   SelectTrigger,
@@ -18,7 +18,7 @@ const ALL_LOCATIONS_VALUE = '__all__';
  * fixed-label behavior (LC-50.10). Real enforcement arrives with auth in Phase 2.
  */
 export function LocationSelector({ className }: { className?: string }) {
-  const { locations, currentLocationId, allowedLocationIds, setCurrentLocation } = useSessionStore();
+  const { locations, currentLocationId, allowedLocationIds, setCurrentLocation } = useAuthStore();
 
   const visible = allowedLocationIds
     ? locations.filter((l) => allowedLocationIds.includes(l.id))

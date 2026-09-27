@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_GROUPS } from '@/config/nav';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -13,7 +13,7 @@ interface SidebarNavProps {
 
 /** Permission-filtered nav shared by the desktop sidebar and the mobile drawer. */
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
-  const hasPermission = useSessionStore((s) => s.hasPermission);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   const expandedGroups = useUiStore((s) => s.expandedGroups);
   const toggleGroup = useUiStore((s) => s.toggleGroup);
 

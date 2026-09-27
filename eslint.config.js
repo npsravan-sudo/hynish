@@ -13,6 +13,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.config.js',
       '**/*.config.ts',
+      'scratch-*.mjs', // local verification scripts, never committed
+      'functions/lib/**',
       'apps/web/src/components/ui/**', // shadcn-style primitives: allow their idioms
     ],
   },

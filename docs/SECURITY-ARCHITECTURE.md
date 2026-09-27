@@ -273,3 +273,71 @@ Each command (ARCHITECTURE §6.3):
 - Rules test matrix: every role (owner, admin, shop, shop-with-overrides, inactive, non-member, anonymous) × every collection × read/create/update/delete × own location / other location. It must be green before any deploy.
 - Function tests: forged totals ignored, forged `locationId` rejected, restricted member at another location rejected, inactive member rejected, stale `auth_time` rejected, duplicate `requestId` returns the original result, and concurrent creates produce unique numbers.
 - Pre-release: an OWASP ASVS L2 checklist review of auth, session and access-control items.
+
+---
+
+## 19. Phase 2 implementation status
+
+This section records what the security foundation actually ships as of Phase 2. The design
+above is the target; the items below are implemented, tested and in the repository.
+
+### 19.1 What is implemented
+
+| Area | Where | Verified by |
+|---|---|---|
+| Permission model (6 roles, overrides, hard exclusions) | `packages/domain/src/permissions.ts` | `permissions.test.ts`, `docs/PERMISSIONS.md` (generated) |
+| Firestore rules (deny-by-default, membership, permission, location, server-only writes) | `firestore.rules` | `tests/rules/firestore.test.ts` (20 cases) |
+| Storage rules (business isolation, member gate, image type/size) | `storage.rules` | `tests/rules/storage.test.ts` (10 cases) |
+| Client auth state machine (loading/configError/signedOut/unauthorized/inactive/ready) | `apps/web/src/stores/auth-store.ts` | `auth-store.test.ts` |
+| Login screen (RHF + Zod, friendly errors) | `apps/web/src/features/auth/` | E2E against Auth emulator |
+| Server authorization guards (auth → active → permission → location → step-up → owner-protection → self-guard) | `functions/src/auth/authorize.ts` | `functions/src/auth/authorize.test.ts` (11 cases) |
+| Member-management callables (create/update/setActive) | `functions/src/members/manage.ts` | guards unit-tested; rules deny direct writes |
+| Session/audit callable + membership triggers (token revocation, businessIds sync) | `functions/src/auth/session.ts`, `functions/src/members/triggers.ts` | — |
+| App Check client init (reCAPTCHA Enterprise; debug token dev-only) | `apps/web/src/lib/firebase/app-check.ts` | — |
+
+### 19.2 Environment separation (Phase 2 §38)
+
+- Three Firebase projects, configured in `.firebaserc`: `hynish-dev` (default), `hynish-staging`,
+  `hynish-prod`. The web app reads its config from build-time `VITE_FIREBASE_*` env (never
+  hard-coded), and the business it serves from `VITE_BUSINESS_ID`.
+- The **emulator** demo project id is `demo-hynish` (no real credentials, offline-safe).
+- Firestore/Functions region: `asia-south1` (OQ-15).
+
+### 19.3 App Check (Phase 2 §34)
+
+- Web provider: **reCAPTCHA Enterprise**, site key from `VITE_APPCHECK_SITE_KEY`.
+- Debug tokens come only from `VITE_APPCHECK_DEBUG_TOKEN` in a **DEV** build and are wired to
+  `globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN`; a production build cannot ship one.
+- App Check is **bypassed against local emulators** and **enforced on callables in production**
+  (`enforceAppCheck` is off only when `FUNCTIONS_EMULATOR === 'true'`).
+- App Check is defense-in-depth; auth + rules remain authoritative.
+
+### 19.4 Emulator strategy (Phase 2 §39)
+
+- `firebase.json` configures the Auth (9099), Firestore (8080), Functions (5001), Storage (9199)
+  and UI (4000) emulators, single-project mode.
+- `npm run emulators` starts them; `npm run test:rules` runs the rule test suites via
+  `firebase emulators:exec --only firestore,storage`.
+- The web client auto-connects to emulators when `VITE_USE_FIREBASE_EMULATORS=true`
+  (`connectAuthEmulator`, `connectFirestoreEmulator`, `connectFunctionsEmulator`,
+  `connectStorageEmulator`).
+
+### 19.5 Deliberate legacy-gap fixes confirmed in tests
+
+- No shared `data/main` document — closed. Each collection has explicit rules.
+- Location/permission restrictions are enforced by rules **and** functions, not app-layer only
+  (KL-05) — proven by the location-denial and cross-business tests.
+- Member documents are **not** client-writable, so nobody can self-escalate role/permissions/
+  active — proven by the membership-protection tests.
+- The 30-day reauth window is enforced in rules (`auth_time`) and in `resolveActor` — proven by
+  the stale-session test.
+
+### 19.6 Known items deferred to later phases
+
+- Business-operation callables (invoices, payments, stock, journal) and their transaction/
+  idempotency machinery — Phase 3+.
+- Production CSP header tuning (`firebase.json` currently sets `X-Content-Type-Options`,
+  `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`, `HSTS`; a full `Content-Security-Policy`
+  is validated against Firebase/reCAPTCHA origins before enforcement — Phase 2 §52).
+- Persistent Firestore cache "trusted device" toggle (§14) — not enabled yet (memory cache only).
+- Automated deploy pipeline (Workload Identity Federation) — infra phase.

@@ -1,9 +1,14 @@
 /**
- * Auth service accessor (Phase 1 §35). Returns the Firebase Auth instance with
- * local persistence (legacy parity: sessions survive restarts until the 30-day
- * re-auth window, ARCHITECTURE §9). No sign-in logic here — Phase 2 implements it.
+ * Auth service accessor (Phase 2 §7, §10). Local persistence (legacy parity: sessions survive
+ * restarts until the 30-day re-auth window, ARCHITECTURE §9). Emulator wiring for development.
  */
-import { getAuth, browserLocalPersistence, setPersistence, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  browserLocalPersistence,
+  connectAuthEmulator,
+  setPersistence,
+  type Auth,
+} from 'firebase/auth';
 import { getFirebaseApp } from './app';
 import { appConfig } from '@/config/env';
 
@@ -14,7 +19,7 @@ export function getFirebaseAuth(): Auth {
   const auth = getAuth(getFirebaseApp());
   void setPersistence(auth, browserLocalPersistence);
   if (appConfig.useEmulators) {
-    // Emulator wiring is deferred to the auth phase; import kept lazy to avoid bundling in prod.
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
   }
   cachedAuth = auth;
   return cachedAuth;

@@ -1,14 +1,13 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import type { Permission } from '@hynish/domain';
-import { useSessionStore } from '@/stores/session-store';
-import { PageSkeleton } from '@/components/feedback/skeletons';
-import { EmptyState } from '@/components/feedback/empty-state';
+import { Link } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
+import type { Permission } from '@hynish/domain';
+import { useAuthStore } from '@/stores/auth-store';
+import { EmptyState } from '@/components/feedback/empty-state';
+import { Button } from '@/components/ui/button';
 
 /**
- * Route-guard foundation (Phase 1 §46). Handles loading / unauthenticated / inactive /
- * unauthorized states. In this phase the session is a placeholder in `ready` state, so guards
- * pass; Phase 2 connects them to real Firebase Auth + Firestore membership.
+ * Per-page permission guard (Phase 2 §47, §49). UX only — the server still enforces every
+ * operation. By the time a page renders, AuthGate has resolved status to 'ready'.
  */
 export function RouteGuard({
   permission,
@@ -17,29 +16,23 @@ export function RouteGuard({
   permission?: Permission | undefined;
   children: React.ReactNode;
 }) {
-  const location = useLocation();
-  const status = useSessionStore((s) => s.status);
-  const hasPermission = useSessionStore((s) => s.hasPermission);
+  const allowed = useAuthStore((s) => (permission ? s.hasPermission(permission) : true));
 
-  if (status === 'loading') {
-    return <PageSkeleton className="p-6" />;
-  }
-
-  if (status === 'unauthenticated') {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-
-  if (permission && !hasPermission(permission)) {
+  if (!allowed) {
     return (
       <div className="py-12">
         <EmptyState
           icon={ShieldAlert}
-          title="You don't have access to this page"
-          description="Ask an administrator to grant the required permission for your account."
+          title="Access restricted"
+          description="You don't have permission to access this section. Ask an administrator if you need it."
+          action={
+            <Button asChild>
+              <Link to="/dashboard">Return to Dashboard</Link>
+            </Button>
+          }
         />
       </div>
     );
   }
-
   return <>{children}</>;
 }

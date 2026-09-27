@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { Menu, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BOTTOM_NAV } from '@/config/nav';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 
 /**
@@ -10,7 +10,7 @@ import { useUiStore } from '@/stores/ui-store';
  * "New Bill" action and a "More" button that opens the full drawer. Safe-area aware.
  */
 export function MobileBottomNav() {
-  const hasPermission = useSessionStore((s) => s.hasPermission);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   const setDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen);
 
   const items = BOTTOM_NAV.filter((i) => hasPermission(i.permission));

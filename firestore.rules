@@ -1,0 +1,329 @@
+rules_version = '2';
+
+// Hynish ERP — Firestore Security Rules (SECURITY-ARCHITECTURE §7).
+//
+// Principles:
+//  - Deny by default; every allowed path is explicit.
+//  - Authorization is enforced HERE and in Cloud Functions — never only in the client.
+//  - Server-owned collections (numbering, stock, invoices, journal, members, settings, …)
+//    are read-only to clients; only the Admin SDK (Cloud Functions) writes them.
+//  - Reads are gated by active membership, the relevant view permission, and — for
+//    location-scoped documents — the member's allowed locations.
+//
+// The permission/role logic mirrors packages/domain/permissions.ts. Behavioural parity is
+// verified by the emulator rule tests in tests/rules/. Keep the two in sync.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Identity & session ----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 30-day re-authentication window (BR-PRM-08). auth_time is seconds since epoch.
+    function reauthFresh() {
+      return isSignedIn()
+        && request.auth.token.auth_time > (request.time.toMillis() / 1000) - (30 * 24 * 3600);
+    }
+
+    // ---- Membership ------------------------------------------------------------------
+    function memberPath(b) {
+      return /databases/$(database)/documents/businesses/$(b)/members/$(request.auth.uid);
+    }
+    function memberExists(b) {
+      return isSignedIn() && exists(memberPath(b));
+    }
+    function member(b) {
+      return get(memberPath(b)).data;
+    }
+    function isMember(b) {
+      return reauthFresh() && memberExists(b) && member(b).active == true;
+    }
+    function role(b) {
+      return member(b).role;
+    }
+    function isAdmin(b) {
+      return isMember(b) && (role(b) == 'owner' || role(b) == 'admin');
+    }
+
+    // ---- Permission resolution (mirrors packages/domain/permissions.ts) ---------------
+    function hardExcluded(perm) {
+      return perm in [
+        'settings.manage', 'numbering.manage', 'members.manage', 'locations.manage',
+        'backup.create', 'restore.execute', 'data.reset',
+        'sales.delete', 'customers.delete', 'suppliers.delete', 'products.delete'
+      ];
+    }
+    function shopDefaults() {
+      return [
+        'dashboard.view',
+        'sales.view', 'sales.create', 'sales.edit',
+        'quotations.view', 'quotations.manage',
+        'deliveryNotes.view', 'deliveryNotes.manage',
+        'customers.view', 'customers.manage',
+        'products.view', 'barcodes.print',
+        'stock.view', 'stock.adjust', 'stock.count', 'stock.transfer', 'reorder.view',
+        'stock.overrideNegative', 'credit.overrideLimit'
+      ];
+    }
+    function managerExtra() {
+      return [
+        'suppliers.view', 'suppliers.manage',
+        'purchases.view', 'purchases.manage',
+        'payments.record', 'dues.view',
+        'expenses.view', 'expenses.manage',
+        'cashbook.view', 'cashbook.manage',
+        'reports.view', 'shopComparison.view'
+      ];
+    }
+    function accountantPerms() {
+      return [
+        'dashboard.view',
+        'sales.view', 'quotations.view', 'deliveryNotes.view',
+        'customers.view', 'suppliers.view', 'products.view', 'stock.view',
+        'purchases.view', 'payments.record', 'dues.view',
+        'accounting.view', 'cashbook.view', 'cashbook.manage',
+        'expenses.view', 'expenses.manage', 'gst.view',
+        'reports.view', 'shopComparison.view'
+      ];
+    }
+    function staffPerms() {
+      return [
+        'dashboard.view',
+        'sales.view', 'sales.create',
+        'customers.view', 'customers.manage',
+        'products.view', 'barcodes.print',
+        'stock.view'
+      ];
+    }
+    function roleGrants(b, perm) {
+      return (role(b) == 'manager' && (perm in shopDefaults() || perm in managerExtra()))
+        || (role(b) == 'accountant' && perm in accountantPerms())
+        || (role(b) == 'shop' && perm in shopDefaults())
+        || (role(b) == 'staff' && perm in staffPerms());
+    }
+    // Per-member overrides (legacy `tabs`): a map of permission -> bool, or absent/null.
+    function ovr(b) {
+      return member(b).permissionOverrides;
+    }
+    function ovrGet(b, perm) {
+      // Returns true, false, or 'unset'.
+      return ('permissionOverrides' in member(b)) && ovr(b) != null && (perm in ovr(b))
+        ? ovr(b)[perm]
+        : 'unset';
+    }
+    function hasPermission(b, perm) {
+      return isMember(b) && (
+        isAdmin(b)
+        || (
+          !hardExcluded(perm)
+          && (ovrGet(b, perm) == true || (ovrGet(b, perm) != false && roleGrants(b, perm)))
+        )
+      );
+    }
+
+    // ---- Location authorization ------------------------------------------------------
+    // locationIds == null (or absent) means unrestricted (all locations). Otherwise the
+    // member may only touch documents whose locationId is in their list. Fails closed.
+    function locationIds(b) {
+      return ('locationIds' in member(b)) ? member(b).locationIds : null;
+    }
+    function canAccessAllLocations(b) {
+      return isAdmin(b) || locationIds(b) == null;
+    }
+    function canAccessLocation(b, loc) {
+      return isMember(b) && (canAccessAllLocations(b) || loc in locationIds(b));
+    }
+
+    // ---- User profile (top-level) ----------------------------------------------------
+    match /users/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list: if false;
+      // A user may only edit their own preferences/default business — never identity or roles.
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['preferences', 'defaultBusinessId', 'updatedAt']);
+      allow create: if false; // provisioned by Cloud Functions on first sign-in
+      allow delete: if false;
+    }
+
+    // ---- Business tenant -------------------------------------------------------------
+    match /businesses/{b} {
+      allow get: if isMember(b);
+      allow list, create, update, delete: if false;
+
+      // Members: sensitive. A user reads their own doc; members.manage reads all. All
+      // writes go through audited Cloud Functions (createMember/updateMember/setActive) so
+      // nobody can change their own role/permissions/active/location (BR-PRM-07, §29, §30).
+      match /members/{uid} {
+        // A signed-in user may always read their OWN membership (in any state) so the client
+        // can resolve authorized / unauthorized / inactive. Admins with members.manage read all.
+        allow get: if isSignedIn() && request.auth.uid == uid;
+        allow get: if hasPermission(b, 'members.manage');
+        allow list: if hasPermission(b, 'members.manage');
+        allow create, update, delete: if false;
+      }
+
+      // Business settings, numbering counters, reservations, barcode index: read for members
+      // (with permission for settings), all writes server-only.
+      match /settings/{doc} {
+        allow get: if isMember(b);
+        allow list, write: if false;
+      }
+      match /counters/{seriesKey} {
+        allow read: if hasPermission(b, 'settings.manage');
+        allow write: if false;
+      }
+      match /documentNumbers/{numberKey} {
+        allow read: if hasPermission(b, 'sales.view');
+        allow write: if false;
+      }
+      match /barcodes/{code} {
+        allow read: if hasPermission(b, 'products.view');
+        allow write: if false;
+      }
+      match /idempotency/{requestId} {
+        allow read, write: if false;
+      }
+
+      // Locations: any member may read (to switch/view); writes via callable (locations.manage).
+      match /locations/{locationId} {
+        allow get, list: if isMember(b);
+        allow write: if false;
+      }
+
+      // ---- Master data (reads gated by permission; writes server-only in this phase) ----
+      match /products/{id} {
+        allow read: if hasPermission(b, 'products.view');
+        allow write: if false;
+      }
+      match /customers/{id} {
+        allow read: if hasPermission(b, 'customers.view');
+        allow write: if false;
+      }
+      match /suppliers/{id} {
+        allow read: if hasPermission(b, 'suppliers.view');
+        allow write: if false;
+      }
+      match /staff/{id} {
+        allow read: if hasPermission(b, 'payroll.view');
+        allow write: if false;
+      }
+      match /whatsappCampaigns/{id} {
+        allow read: if hasPermission(b, 'sales.view');
+        allow write: if false;
+      }
+
+      // ---- Stock (location-scoped reads; immutable/server-only writes) ----
+      match /stockLevels/{id} {
+        allow read: if hasPermission(b, 'stock.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /stockMovements/{id} {
+        allow read: if hasPermission(b, 'stock.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false; // append-only, Cloud Functions only (BR-PRM-06)
+      }
+      match /stockTransfers/{id} {
+        allow read: if hasPermission(b, 'stock.view');
+        allow write: if false;
+      }
+      match /stockCounts/{id} {
+        allow read: if hasPermission(b, 'stock.count') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+
+      // ---- Sales & documents (location-scoped reads; server-only writes) ----
+      match /invoices/{id} {
+        allow read: if hasPermission(b, 'sales.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /quotations/{id} {
+        allow read: if hasPermission(b, 'quotations.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /deliveryNotes/{id} {
+        allow read: if hasPermission(b, 'deliveryNotes.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /creditNotes/{id} {
+        allow read: if hasPermission(b, 'sales.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /debitNotes/{id} {
+        allow read: if hasPermission(b, 'purchases.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /purchases/{id} {
+        allow read: if hasPermission(b, 'purchases.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /payments/{id} {
+        allow read: if hasPermission(b, 'dues.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+
+      // ---- Accounting, cash, expenses, payroll (server-only writes) ----
+      match /accounts/{id} {
+        allow read: if hasPermission(b, 'accounting.view');
+        allow write: if false;
+      }
+      match /journalEntries/{id} {
+        allow read: if hasPermission(b, 'accounting.view');
+        allow write: if false;
+      }
+      match /ledgerMonthly/{id} {
+        allow read: if hasPermission(b, 'accounting.view');
+        allow write: if false;
+      }
+      match /salesDaily/{id} {
+        allow read: if hasPermission(b, 'dashboard.view');
+        allow write: if false;
+      }
+      match /expenseCategories/{id} {
+        allow read: if hasPermission(b, 'expenses.view');
+        allow write: if false;
+      }
+      match /expenses/{id} {
+        allow read: if hasPermission(b, 'expenses.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /cashEntries/{id} {
+        allow read: if hasPermission(b, 'cashbook.view') && canAccessLocation(b, resource.data.locationId);
+        allow write: if false;
+      }
+      match /payrollEntries/{id} {
+        allow read: if hasPermission(b, 'payroll.view');
+        allow write: if false;
+      }
+      match /staffPayments/{id} {
+        allow read: if hasPermission(b, 'payroll.view');
+        allow write: if false;
+      }
+
+      // ---- Audit & admin (read for the permitted; server-only writes) ----
+      match /activityLog/{id} {
+        allow read: if hasPermission(b, 'activity.view');
+        allow write: if false;
+      }
+      match /backups/{id} {
+        allow read: if hasPermission(b, 'backup.create');
+        allow write: if false;
+      }
+      match /restoreJobs/{id} {
+        allow read: if hasPermission(b, 'restore.execute');
+        allow write: if false;
+      }
+
+      // Any other/future subcollection is denied until its module adds explicit rules.
+      match /{path=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // ---- Global deny (defence in depth) ----------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -6,7 +6,8 @@
   "description": "Hynish Clothing — Wholesale Ledger ERP (rebuild)",
   "workspaces": [
     "packages/*",
-    "apps/web"
+    "apps/web",
+    "functions"
   ],
   "scripts": {
     "dev": "npm run dev --workspace apps/web",
@@ -15,18 +16,28 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "build:domain": "npm run build --workspace packages/domain",
+    "prebuild": "npm run build:domain",
+    "pretypecheck": "npm run build:domain",
+    "pretest": "npm run build:domain",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-hynish \"vitest run --config tests/rules/vitest.config.ts\"",
+    "emulators": "firebase emulators:start --project demo-hynish"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "firebase": "^11.1.0",
+    "firebase-tools": "^13.29.1",
     "globals": "^15.14.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.19.0"
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"

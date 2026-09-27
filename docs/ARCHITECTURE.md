@@ -428,3 +428,66 @@ The legacy app was fully offline-first. The new architecture makes numbering, st
 | 7 | Migration tooling + dry runs + parity verification, cutover |
 
 Every phase ends with a **LEGACY COMPATIBILITY CHECK** section (template in `CLAUDE.md`).
+
+---
+
+## 19. Phase 2 addendum — Firebase & Cloud Functions foundation
+
+The Firebase/Functions architecture from §6 is now scaffolded and exercised end-to-end against
+the emulator suite.
+
+### 19.1 Workspaces
+
+```
+packages/domain   pure logic (money, GST, numbering, permissions) — built to dist for reuse
+apps/web          React PWA (aliases @hynish/domain to src for dev)
+functions         Cloud Functions v2 (TypeScript, NodeNext ESM) — consumes @hynish/domain dist
+```
+
+The root scripts build `packages/domain` before typecheck/build/test so `functions` (which
+imports the built package) always resolves it.
+
+### 19.2 Cloud Functions layout (implemented)
+
+```
+functions/src/
+├── index.ts                 exports only
+├── config/{app,constants}.ts  Admin SDK init (app) + pure constants (unit-test-safe)
+├── utils/{errors,logger}.ts   typed AppError codes; secret-free audit logging
+├── auth/
+│   ├── types.ts             MemberRecord, TokenFacts, Actor
+│   ├── authorize.ts         PURE composable guards (permission/location/reauth/step-up/owner)
+│   ├── context.ts           resolveActor() — Firestore-backed trusted context
+│   └── session.ts           logSession callable (login/logout audit + profile upsert)
+├── middleware/callable.ts   defineCallable(): region + App Check + Zod + typed errors
+├── members/
+│   ├── manage.ts            createMember / updateMember / setMemberActive callables
+│   └── triggers.ts          onMemberWritten (businessIds sync + token revocation)
+└── schemas/members.ts       Zod request schemas
+```
+
+The callable pipeline (`defineCallable` → `resolveActor` → `assert*`) is the reusable pattern
+every future business-operation function will follow (ARCHITECTURE §6.3).
+
+### 19.3 Client auth architecture (implemented)
+
+- One authoritative store, `apps/web/src/stores/auth-store.ts`, driving the whole app: Firebase
+  `onAuthStateChanged` → membership `onSnapshot` → resolved `AuthStatus`. Business data
+  listeners (locations, settings) start only when authorized.
+- `AuthGate` (`app/auth-gate.tsx`) renders login / unauthorized / inactive / config-error
+  screens and only mounts the shell + routed pages when status is `ready`, so protected content
+  never flashes before authorization (§48).
+- Context hooks (`features/auth/hooks.ts`): `useAuth`, `useBusiness`, `useMembership`,
+  `usePermission(s)`, `useCurrentLocation`. UI gates: `PermissionGate`, `RoleGate`.
+
+### 19.4 Testing (implemented)
+
+| Suite | Runner | Count |
+|---|---|---|
+| Domain (money, FY, permissions) | Vitest | 10 |
+| Web (auth store, permission-filtered nav, shell, components, utils) | Vitest + jsdom | 23 |
+| Functions authorization guards | Vitest | 11 |
+| Firestore rules | Vitest + Firestore emulator | 20 |
+| Storage rules | Vitest + Storage emulator | 10 |
+
+`npm run test` runs the unit suites; `npm run test:rules` runs the emulator security suites.

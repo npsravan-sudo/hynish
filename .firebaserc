@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "hynish-dev",
+    "dev": "hynish-dev",
+    "staging": "hynish-staging",
+    "prod": "hynish-prod"
+  }
+}

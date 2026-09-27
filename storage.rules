@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// Hynish ERP — Cloud Storage Security Rules (SECURITY-ARCHITECTURE §8).
+// Business-isolated, member-gated. Images only, size-limited. Default deny.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function member(b) {
+      return firestore.get(/databases/(default)/documents/businesses/$(b)/members/$(request.auth.uid)).data;
+    }
+    function memberExists(b) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/businesses/$(b)/members/$(request.auth.uid));
+    }
+    function isMember(b) {
+      return memberExists(b) && member(b).active == true;
+    }
+    function isAdmin(b) {
+      return isMember(b) && (member(b).role == 'owner' || member(b).role == 'admin');
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    function underSize(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+    // Mirrors packages/domain hasPermission for the write permissions used here.
+    function canManageProducts(b) {
+      return isMember(b) && (isAdmin(b) || member(b).role in ['manager', 'shop', 'staff']);
+    }
+
+    // Business logo: readable by members; written only via the settings callable (server).
+    match /businesses/{b}/branding/{file} {
+      allow read: if isMember(b);
+      allow write: if false;
+    }
+
+    // Product images: readable by members; members who can manage products may upload
+    // (≤ 1 MB image). Replace/delete goes through the products callable.
+    match /businesses/{b}/products/{productId}/{file} {
+      allow read: if isMember(b);
+      allow create: if canManageProducts(b) && isImage() && underSize(1);
+      allow update, delete: if false;
+    }
+
+    // Backups: entirely server-only (downloaded via short-lived signed URLs).
+    match /businesses/{b}/backups/{file} {
+      allow read, write: if false;
+    }
+
+    // Everything else: deny.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

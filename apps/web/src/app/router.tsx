@@ -2,6 +2,7 @@ import { lazy, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import type { Permission } from '@hynish/domain';
 import { AppShell } from '@/components/layout/app-shell';
+import { AuthGate } from './auth-gate';
 import { RouteGuard } from './route-guard';
 
 /** Lazy-load a named page export, code-splitting per feature module (Phase 1 §54). */
@@ -21,7 +22,6 @@ const inv = () => import('@/features/inventory/inventory-pages');
 const acc = () => import('@/features/accounting/accounting-pages');
 const admin = () => import('@/features/admin/admin-pages');
 
-const LoginPage = page(() => import('@/features/auth/login-page'), 'LoginPage');
 const NotFoundPage = page(() => import('@/features/_shared/not-found-page'), 'NotFoundPage');
 const DesignSystemPage = page(() => import('@/features/dev/design-system-page'), 'DesignSystemPage');
 
@@ -106,6 +106,10 @@ const shellChildren: RouteObject[] = [
 ];
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/', element: <AppShell />, children: shellChildren },
+  {
+    // AuthGate resolves auth status and renders login / unauthorized / inactive / config
+    // screens itself; the shell + pages render only when authorized (§44, §48).
+    element: <AuthGate />,
+    children: [{ path: '/', element: <AppShell />, children: shellChildren }],
+  },
 ]);

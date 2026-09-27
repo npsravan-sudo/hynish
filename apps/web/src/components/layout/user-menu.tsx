@@ -1,6 +1,6 @@
-import { LogOut, User, Settings as SettingsIcon, ShieldAlert } from 'lucide-react';
+import { LogOut, User, Settings as SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -23,8 +23,22 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  accountant: 'Accountant',
+  shop: 'Shop',
+  staff: 'Staff',
+};
+
 export function UserMenu() {
-  const { user, businessName, isPlaceholder, hasPermission } = useSessionStore();
+  const user = useAuthStore((s) => s.user);
+  const businessName = useAuthStore((s) => s.businessName);
+  const role = useAuthStore((s) => s.role);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const signOut = useAuthStore((s) => s.signOutUser);
+
   const name = user?.displayName ?? 'User';
 
   return (
@@ -40,17 +54,13 @@ export function UserMenu() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-foreground">{name}</span>
-            <span className="truncate text-xs text-muted-foreground">{businessName}</span>
+            <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+            <div className="mt-1 flex items-center gap-2">
+              {businessName && <span className="truncate text-xs text-muted-foreground">{businessName}</span>}
+              {role && <Badge variant="secondary" className="text-[10px]">{ROLE_LABEL[role] ?? role}</Badge>}
+            </div>
           </div>
         </DropdownMenuLabel>
-        {isPlaceholder && (
-          <div className="px-2.5 pb-2 pt-1">
-            <Badge variant="warning" className="gap-1">
-              <ShieldAlert className="size-3" />
-              Preview — sign-in wired in Phase 2
-            </Badge>
-          </div>
-        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/dashboard">
@@ -65,8 +75,8 @@ export function UserMenu() {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled className="text-muted-foreground">
-          <LogOut /> Sign out (Phase 2)
+        <DropdownMenuItem onSelect={() => void signOut()}>
+          <LogOut /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

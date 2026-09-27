@@ -14,7 +14,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { MetricCard, ActionCard, SectionCard } from '@/components/premium';
 import { EmptyState } from '@/components/feedback/empty-state';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 /**
  * Dashboard shell (Phase 1). Demonstrates the premium KPI + gradient system and quick
@@ -23,7 +23,7 @@ import { useSessionStore } from '@/stores/session-store';
  * the data layer lands (BR-RPT-01..03), preserving legacy scoping (Dashboard §38 / LC-38.1).
  */
 export function DashboardPage() {
-  const businessName = useSessionStore((s) => s.businessName);
+  const businessName = useAuthStore((s) => s.businessName);
 
   const greeting = getGreeting();
 

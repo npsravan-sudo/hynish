@@ -37,3 +37,18 @@ coverage/
 # firebase
 .firebase/
 firebase-debug.log
+
+# firebase functions build output
+functions/lib/
+# firebase emulator artifacts
+*-debug.log
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+firestore.rules.tmp
+# packages build output
+packages/*/dist/
+# scratch verification scripts (not committed)
+scratch-*.mjs

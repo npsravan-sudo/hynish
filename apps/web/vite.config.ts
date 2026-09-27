@@ -16,10 +16,18 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: false,
-    // Rollup's automatic splitting keeps the React ecosystem correctly ordered; feature
-    // routes are already code-split via lazy imports. We only raise the warning threshold to
-    // account for the eagerly-loaded shell vendor (React, Radix, router). Manual vendor
-    // splitting is deferred until it is proven safe (avoids cross-chunk React interop bugs).
+    rollupOptions: {
+      output: {
+        // Split ONLY the Firebase SDK (and charts) into their own chunks. These have no React
+        // interop, so this is safe — unlike splitting React/Radix, which broke initialization.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/](firebase|@firebase|@grpc|protobufjs|@protobufjs)[\\/]/.test(id)) return 'firebase';
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts';
+          return undefined;
+        },
+      },
+    },
     chunkSizeWarningLimit: 700,
   },
   test: {

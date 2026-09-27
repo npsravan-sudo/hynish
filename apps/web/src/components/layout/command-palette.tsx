@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '@/stores/ui-store';
-import { useSessionStore } from '@/stores/session-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { NAV_GROUPS } from '@/config/nav';
 import {
   CommandDialog,
@@ -20,7 +20,7 @@ import {
 export function CommandPalette() {
   const open = useUiStore((s) => s.commandPaletteOpen);
   const setOpen = useUiStore((s) => s.setCommandPaletteOpen);
-  const hasPermission = useSessionStore((s) => s.hasPermission);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
 
   useEffect(() => {
