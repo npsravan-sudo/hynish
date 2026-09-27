@@ -1195,3 +1195,17 @@ Legacy limitations **not** reproduced: product-image orphaning on replace (KL-03
 server-side deletion of the previous object; master-data writes are server-authoritative (client
 writes denied) instead of direct-to-`data/main`; and archiving is soft-delete so invoices, stock and
 journal references keep their frozen details instead of breaking.
+
+## Phase 5 — Sales parity (implemented)
+
+Preserved: New Bill Without-GST default (DEF-016), six independent numbering series with legacy
+prefixes (INV/NGST/QUO), PREFIX/FY/seq format, frozen customer/seller snapshots, the exact GST math
+(intra CGST+SGST, inter IGST, Without-GST=0), round-to-rupee roundOff booked to Sales Revenue, the
+invoice/COGS/payment journal shapes (BR-ACC-08/09, BR-COGS-01, BR-PAY-03/04), edit = undo-then-reapply
+keeping the amount received, delete reverting stock/journals + source, stock-shortage / over-payment /
+past-month as non-blocking warnings, and INR formatting.
+
+Legacy limitations NOT reproduced: per-device counters (KL-01) → server-authoritative atomic numbering
+(verified collision-free under concurrency); direct client writes to `data/main` → server-only
+callables with balance-or-refuse posting; hard invoice delete → soft-delete keeping the number
+reserved; non-idempotent saves → requestId idempotency.

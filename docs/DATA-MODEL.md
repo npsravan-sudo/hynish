@@ -589,3 +589,25 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
   indexes for `customers` and `suppliers`.
 - **Images** live in Storage at `businesses/{b}/products/{productId}/{imageId}.jpg`; the doc stores
   only `imagePath`. Replacing/clearing deletes the old object server-side (fixes KL-03).
+
+## Phase 5 — Sales collections (implemented)
+
+- **`invoices/{id}`** — number/seriesKey (`invoice_gst`|`invoice_nogst`)/fy/seq, date, dueDate,
+  locationId, customerId + frozen `customerSnapshot`, `sellerSnapshot`, `gstApplicable`, `taxType`,
+  `lines[]` (each with name/code/HSN/unit/qty/baseQty/rate/discountBp/gstRateBp/taxable/cgst/sgst/
+  igst/total + `unitCostPaise` COGS snapshot + `skipStockDeduction`), header totals
+  (subtotal/cgst/sgst/igst/tax/roundOff/grandTotal), `initialPaidPaise`/`paidPaise`/`outstandingPaise`/
+  `paymentStatus`, `source`, `createdByName`, `revision`, soft-delete.
+- **`quotations/{id}`** — number/fy/seq, date, location, customer + snapshot, taxType, lines (invoice
+  line shape minus cost/stock), totals (subtotal/tax/roundOff/grand), `status` (`open`|`converted`),
+  `convertedInvoiceId`, soft-delete.
+- **`payments/{id}`** — direction/targetType/targetId/targetNumber, partyId, date, amountPaise, mode,
+  reference, locationId, `cashEntryId`, `journalEntryId`, soft-delete.
+- **`journalEntries/{id}`** — server-only double-entry: date, locationId, refType, refId, refLabel,
+  balanced `lines[]`, totalPaise, `status` (`posted`|`voided`) + void audit. Edits/deletes VOID and
+  re-post (BR-ACC-05).
+- **`documentNumbers/{key}`** and **`idempotency/{requestId}`** — server-only (uniqueness reservation;
+  transaction-scoped operation dedupe). Client writes denied.
+- **Indexes:** invoices by (deletedAt,date) + (deletedAt,{location|customer|paymentStatus|seriesKey},
+  date); quotations by (deletedAt,date)/(…,status)/(…,customer); payments by (deletedAt,date) and
+  (targetType,targetId,date).

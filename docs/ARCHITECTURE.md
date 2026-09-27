@@ -533,3 +533,17 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
 - **Location locking (Phase 5 dependency):** locations are soft-deleted, never removed, and the
   "one active location" invariant is server-enforced, so a later phase can safely lock a session to a
   location and rely on it continuing to exist and resolve.
+
+## Phase 5 — Sales flow (implemented)
+
+- **UI → hooks → sales.service → callable → transaction → Firestore.** Components never touch
+  Firestore/Storage directly. Reads go through the repositories; writes go through
+  `services/sales.service.ts` → `finalizeInvoice`/`deleteInvoice`/`recordPayment`/`saveQuotation`.
+- **One deterministic calculator** (`computeCart` in `packages/domain/gst.ts`) powers the live UI
+  preview, the server recompute, and the tests — the client preview is never authoritative (§22/§23).
+- **The accounting gateway** (`functions/src/accounting/post-core.ts`) is the single writer of journal
+  entries (balance-or-refuse; void-and-repost). Numbering (`reserveNumberInTx`) and idempotency run in
+  the same transaction as the invoice/payment write, so numbering + document + journals are atomic.
+- **Integration boundary for Phase 6:** finalize/delete are the transactions where stock movements
+  will be added; lines already carry baseQty/unitCost/skipStockDeduction. The `payment_out` /
+  purchase path is stubbed in the domain for the Purchases phase.

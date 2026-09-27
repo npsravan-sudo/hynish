@@ -380,3 +380,26 @@ BR-INV/PAY workflows) have their contracts defined (`AccountingService`, `Invent
 
 All master-data mutations are audited (create/update/activate/deactivate) via the Phase 3
 `activityLog`, written in the same batch/transaction as the change.
+
+## Phase 5 — Sales rules (implemented)
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-INV-01 New Bill opens Without GST | `invoice-form-page.tsx` (NEW_BILL_GST_APPLICABLE_DEFAULT) | manual/UI |
+| BR-INV-03 qty>0, ≥1 line | `build-lines.ts`, form guard | `sales.emu` (build path), UI |
+| BR-INV-04 same product+variant increments qty | `parts.tsx` LineEditor | UI |
+| BR-INV-10/37 edit location-locked; past-month warning | `finalize-invoice.ts` (LOCATION_DENIED, PAST_MONTH_EDIT) | server code |
+| BR-INV-11/12 edit = undo-then-reapply; amount received preserved | `finalize-invoice.ts` | `sales.emu.test.ts` (void by ref) |
+| BR-INV-13 delete voids journals + reverts source, soft-delete | `delete-invoice.ts` | `sales.emu.test.ts` |
+| BR-INV-15 quotation→invoice conversion, source flips on save | `finalize-invoice.ts`, `quotation-detail-page.tsx` | server code |
+| BR-NUM-01/04/05/11 six series, INV/NGST split, atomic, no consume on failure | `reserve-core.ts`, `finalize-invoice.ts` | `numbering.emu.test.ts`, `sales.emu.test.ts` |
+| BR-GST-01..06 intra/inter/without, state edges | `gst.ts` `computeCart` | `gst-cart.test.ts` |
+| BR-MNY-03 round-to-rupee roundOff | `gst.ts` totalsForCart | `gst-cart.test.ts` |
+| BR-ACC-01/04/05/08 balance-or-refuse, server-only, void+repost, invoice posting | `post-core.ts`, `posting.ts` | `posting.test.ts`, `sales.emu.test.ts` |
+| BR-ACC-09 invoice entry books only at-billing paid | `finalize-invoice.ts`, `posting.ts` | `posting.test.ts` |
+| BR-COGS-01/02 Dr COGS/Cr Inventory Σ unitCost×baseQty (purchasePrice snapshot) | `posting.ts`, `build-lines.ts` | `posting.test.ts` |
+| BR-PAY-01..05 amount>0, over-pay warn, status, payment_in by mode, cash-book | `record-payment.ts`, `posting.ts` | `posting.test.ts` |
+| BR-DUE-01/02/04 outstanding, gap>50, dues badges | `posting.ts`, `dues-page.tsx` | `posting.test.ts` |
+
+Server-authoritative: client writes to invoices/quotations/payments/journalEntries are denied
+(`tests/rules/sales.test.ts`); every mutation is idempotent by requestId (`sales.emu.test.ts`).

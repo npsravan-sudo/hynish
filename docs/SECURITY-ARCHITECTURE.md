@@ -368,3 +368,14 @@ above is the target; the items below are implemented, tested and in the reposito
 - Storage: product images live under `businesses/{b}/products/{productId}/…`; upload requires
   owner/admin (`products.manage`), reads require membership, and replace/delete is server-only so
   objects are never orphaned (KL-03). Verified in `tests/rules/storage.test.ts`.
+
+## Phase 5 — Sales (implemented)
+
+- All sales writes are server-authoritative callables (App Check + auth + reauth + Zod →
+  `resolveActor` → `assertPermission` → `assertLocationAccess`). No client-provided money
+  (tax/grandTotal/receivable) is trusted — the server recomputes it from master data (§23/§56).
+- Firestore rules deny client writes to `invoices`, `quotations`, `payments`, `journalEntries`,
+  `documentNumbers` and `idempotency`; reads are gated by permission + location
+  (`tests/rules/sales.test.ts`).
+- Finalization/payment run in a single transaction (number reservation + document + journals +
+  idempotency record), so a retry/timeout/double-tap can never create duplicates (§27/§35).

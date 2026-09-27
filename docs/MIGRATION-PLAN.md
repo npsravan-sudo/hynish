@@ -252,3 +252,13 @@ At no point is legacy data deleted by the migration.
   legacy barcodes surface as import conflicts rather than silent overwrites.
 - **Location locking (Phase 5):** because locations are soft-deleted and one active location is always
   guaranteed, migration can seed locations first and later phases can lock to them safely.
+
+## Phase 5 — Sales readiness (implemented)
+
+- Invoices/quotations/payments import into the Phase 5 collections with server-shaped fields (frozen
+  snapshots, seriesKey, integer-paise totals, `paymentStatus`, revision). Numbering counters seed the
+  `counters` docs so imported numbers and future numbers never collide (KL-01 fixed).
+- Journal entries are reconstructable from the same `journalLinesFor*` builders the runtime uses, so
+  migrated books reconcile to legacy `postJournal()` output.
+- Phase-6 dependency: stock movements for historical invoices are seeded by the Inventory migration;
+  Phase 5 invoices already carry `baseQty`/`unitCostPaise`/`skipStockDeduction` for that step.
