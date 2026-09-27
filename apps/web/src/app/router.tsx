@@ -31,6 +31,17 @@ const LocationListPage = page(() => import('@/features/locations/location-list-p
 const LocationFormPage = page(() => import('@/features/locations/location-form-page'), 'LocationFormPage');
 const LocationDetailPage = page(() => import('@/features/locations/location-detail-page'), 'LocationDetailPage');
 
+// Sales (Phase 5).
+const InvoiceListPage = page(() => import('@/features/sales/invoice-list-page'), 'InvoiceListPage');
+const InvoiceFormPage = page(() => import('@/features/sales/invoice-form-page'), 'InvoiceFormPage');
+const InvoiceDetailPage = page(() => import('@/features/sales/invoice-detail-page'), 'InvoiceDetailPage');
+const InvoicePrintPage = page(() => import('@/features/sales/invoice-print-page'), 'InvoicePrintPage');
+const QuotationListPage = page(() => import('@/features/sales/quotation-list-page'), 'QuotationListPage');
+const QuotationFormPage = page(() => import('@/features/sales/quotation-form-page'), 'QuotationFormPage');
+const QuotationDetailPage = page(() => import('@/features/sales/quotation-detail-page'), 'QuotationDetailPage');
+const PaymentsPage = page(() => import('@/features/sales/payments-page'), 'PaymentsPage');
+const DuesPage = page(() => import('@/features/sales/dues-page'), 'DuesPage');
+
 const sales = () => import('@/features/sales/sales-pages');
 const inv = () => import('@/features/inventory/inventory-pages');
 const acc = () => import('@/features/accounting/accounting-pages');
@@ -56,14 +67,20 @@ const shellChildren: RouteObject[] = [
     path: 'sales',
     children: [
       { index: true, element: <Navigate to="/sales/invoices" replace /> },
-      { path: 'new', element: guarded(page(sales, 'NewInvoicePage'), 'sales.create') },
-      { path: 'invoices', element: guarded(page(sales, 'InvoicesPage'), 'sales.view') },
-      { path: 'quotations', element: guarded(page(sales, 'QuotationsPage'), 'quotations.view') },
+      { path: 'new', element: guarded(InvoiceFormPage, 'sales.create') },
+      { path: 'invoices', element: guarded(InvoiceListPage, 'sales.view') },
+      { path: 'invoices/:id', element: guarded(InvoiceDetailPage, 'sales.view') },
+      { path: 'invoices/:id/edit', element: guarded(InvoiceFormPage, 'sales.edit') },
+      { path: 'invoices/:id/print', element: guarded(InvoicePrintPage, 'sales.view') },
+      { path: 'quotations', element: guarded(QuotationListPage, 'quotations.view') },
+      { path: 'quotations/new', element: guarded(QuotationFormPage, 'quotations.manage') },
+      { path: 'quotations/:id', element: guarded(QuotationDetailPage, 'quotations.view') },
+      { path: 'quotations/:id/edit', element: guarded(QuotationFormPage, 'quotations.manage') },
       { path: 'delivery-notes', element: guarded(page(sales, 'DeliveryNotesPage'), 'deliveryNotes.view') },
       { path: 'credit-notes', element: guarded(page(sales, 'CreditNotesPage'), 'creditNotes.manage') },
       { path: 'debit-notes', element: guarded(page(sales, 'DebitNotesPage'), 'debitNotes.manage') },
-      { path: 'payments', element: guarded(page(sales, 'PaymentsPage'), 'payments.record') },
-      { path: 'dues', element: guarded(page(sales, 'DuesPage'), 'dues.view') },
+      { path: 'payments', element: guarded(PaymentsPage, 'payments.record') },
+      { path: 'dues', element: guarded(DuesPage, 'dues.view') },
     ],
   },
 

@@ -16,6 +16,9 @@ export type AppErrorCode =
   | 'VALIDATION_FAILED'
   | 'NOT_FOUND'
   | 'CONFLICT'
+  // Confirmation-required (warnings, not hard blocks): the client re-submits with an acknowledgement.
+  | 'PAST_MONTH_EDIT'
+  | 'OVER_PAYMENT'
   | 'INTERNAL';
 
 const CODE_TO_HTTPS: Record<AppErrorCode, FunctionsErrorCode> = {
@@ -30,6 +33,8 @@ const CODE_TO_HTTPS: Record<AppErrorCode, FunctionsErrorCode> = {
   VALIDATION_FAILED: 'invalid-argument',
   NOT_FOUND: 'not-found',
   CONFLICT: 'aborted',
+  PAST_MONTH_EDIT: 'failed-precondition',
+  OVER_PAYMENT: 'failed-precondition',
   INTERNAL: 'internal',
 };
 

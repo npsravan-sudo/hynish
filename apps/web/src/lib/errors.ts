@@ -14,6 +14,8 @@ const CODE_MESSAGES: Record<string, string> = {
   OWNER_PROTECTED: 'Only the owner can manage owner-level accounts.',
   CONFLICT: 'That conflicts with existing data. Please review and retry.',
   NOT_FOUND: 'That record was not found. It may have been removed.',
+  PAST_MONTH_EDIT: 'This bill is from a past month and may already have been filed for GST.',
+  OVER_PAYMENT: 'This payment is more than the outstanding balance.',
   INTERNAL: 'Something went wrong. Please try again.',
 };
 
@@ -36,4 +38,9 @@ export function mapCallableError(err: unknown): string {
   const code = detailsCode(err);
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code];
   return CODE_MESSAGES.INTERNAL!;
+}
+
+/** The stable server error code, for confirmation flows (PAST_MONTH_EDIT / OVER_PAYMENT). */
+export function callableErrorCode(err: unknown): string | null {
+  return detailsCode(err);
 }

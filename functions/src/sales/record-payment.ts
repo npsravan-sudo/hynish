@@ -53,7 +53,7 @@ export const recordPayment = defineCallable(recordPaymentRequest, async (input, 
 
     // Over-payment is a warning, not a block (BR-PAY-01): needs OVER_PAYMENT confirmation.
     if (amount > outstanding + OUTSTANDING_THRESHOLD_PAISE && !input.confirmations.includes('OVER_PAYMENT')) {
-      throw appError('VALIDATION_FAILED', 'OVER_PAYMENT');
+      throw appError('OVER_PAYMENT', 'This payment is more than the outstanding balance.');
     }
 
     // ---- WRITE PHASE ----

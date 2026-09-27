@@ -62,7 +62,7 @@ export const finalizeInvoice = defineCallable(finalizeInvoiceRequest, async (inp
       assertLocationAccess(actor.member, ex.locationId);
       // Past-month edit warning (BR-INV-10/38): non-blocking — requires an explicit acknowledgement.
       if (monthKey(ex.date) < monthKey(todayISO()) && !input.acknowledgePastMonth) {
-        throw appError('VALIDATION_FAILED', 'PAST_MONTH_EDIT');
+        throw appError('PAST_MONTH_EDIT', 'This bill is from a past month and may already have been filed for GST.');
       }
     }
 

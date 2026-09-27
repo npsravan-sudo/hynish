@@ -10,7 +10,7 @@ import {
   stockLevelSchema, expenseSchema, cashEntrySchema, activityLogSchema,
   businessSettingsSchema, integrationSettingsSchema,
   type Product, type Customer, type Supplier, type Location, type Member,
-  type Invoice, type Payment, type Account, type JournalEntry, type StockMovement,
+  type Invoice, type Quotation, type Payment, type Account, type JournalEntry, type StockMovement,
   type BusinessSettings,
 } from '@hynish/domain';
 import { paths } from '../firestore/paths';
@@ -24,6 +24,7 @@ export interface Repositories {
   customers: ReadRepository<Customer>;
   suppliers: ReadRepository<Supplier>;
   invoices: ReadRepository<Invoice>;
+  quotations: ReadRepository<Quotation>;
   payments: ReadRepository<Payment>;
   accounts: ReadRepository<Account>;
   journalEntries: ReadRepository<JournalEntry>;
@@ -40,6 +41,7 @@ export function makeRepositories(businessId: string): Repositories {
     customers: createReadRepository(paths.customers(businessId), customerSchema),
     suppliers: createReadRepository(paths.suppliers(businessId), supplierSchema),
     invoices: createReadRepository(paths.invoices(businessId), invoiceSchema),
+    quotations: createReadRepository(paths.quotations(businessId), quotationSchema),
     payments: createReadRepository(paths.payments(businessId), paymentSchema),
     accounts: createReadRepository(paths.accounts(businessId), accountSchema),
     journalEntries: createReadRepository(paths.journalEntries(businessId), journalEntrySchema),

@@ -19,7 +19,7 @@ export interface ComboboxProps {
   /** Allow typing a value that isn't in the options (e.g. free-text category). */
   allowCustom?: boolean;
   emptyText?: string;
-  id?: string;
+  id?: string | undefined;
   'aria-invalid'?: boolean;
   disabled?: boolean;
   className?: string;
