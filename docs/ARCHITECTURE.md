@@ -491,3 +491,27 @@ every future business-operation function will follow (ARCHITECTURE §6.3).
 | Storage rules | Vitest + Storage emulator | 10 |
 
 `npm run test` runs the unit suites; `npm run test:rules` runs the emulator security suites.
+
+---
+
+## 20. Phase 3 addendum — domain, infrastructure & services layering
+
+```
+UI (features/components)
+  → hooks / stores            (Zustand: UI + session only, never the DB)
+    → services                (apps/web/src/services: orchestration, pure calc, callable wrappers)
+      → repositories          (apps/web/src/infrastructure/repositories: typed reads + realtime)
+        → Firebase            (converter-validated; writes = Cloud Functions)
+packages/domain               (pure: money, dates, GST, numbering, accounting, inventory,
+                               errors, query, schemas, fixtures — zero Firebase/React/DOM)
+```
+
+- **No Firestore in the UI** is enforced by ESLint (`no-restricted-imports` on `firebase/firestore`
+  and the firestore infra/lib modules within `features/**` and `components/**`).
+- **Repositories** are read/realtime only this phase (`get`/`list` cursor-paginated/`watch`);
+  every critical write is a server-authoritative Cloud Function.
+- **`packages/domain`** is the single home for business logic shared by the web client and Cloud
+  Functions, so the client, the server and (mirrored) the Firestore rules never disagree.
+- **`reserveDocumentNumber`** is the first server-authoritative operation; `postJournal`,
+  `recordStockMovement`, `postInvoice/Purchase/Payment` have their contracts in `@hynish/domain`
+  and land with their modules.

@@ -341,3 +341,17 @@ above is the target; the items below are implemented, tested and in the reposito
   is validated against Firebase/reCAPTCHA origins before enforcement — Phase 2 §52).
 - Persistent Firestore cache "trusted device" toggle (§14) — not enabled yet (memory cache only).
 - Automated deploy pipeline (Workload Identity Federation) — infra phase.
+
+---
+
+## 20. Phase 3 note — domain/repository security posture
+
+- The frontend contains **no Firebase Admin SDK**; the client uses the modular Web SDK for reads
+  only. Every critical write is a server-authoritative Cloud Function (Phase 2 rules deny direct
+  client writes to owned collections).
+- `packages/domain` has **zero Firebase imports**, so shared business logic cannot bypass
+  authorization; it is reused identically on the server.
+- "No Firestore in the UI" (Phase 3 §41) is enforced by ESLint within `features/**` and
+  `components/**`, keeping all data access behind repositories/services.
+- `reserveDocumentNumber` enforces auth + the per-series create permission before its
+  transaction, so a user can only reserve numbers for documents they may create.

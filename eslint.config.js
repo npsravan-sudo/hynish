@@ -45,4 +45,23 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  {
+    // No Firestore in the UI (Phase 3 §41). Features/components must go through
+    // hooks -> services -> repositories. Direct firebase/firestore access is denied here.
+    files: ['apps/web/src/features/**/*.{ts,tsx}', 'apps/web/src/components/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'firebase/firestore', message: 'UI must not access Firestore directly — use a repository/service (Phase 3 §41).' },
+          ],
+          patterns: [
+            { group: ['**/infrastructure/firestore/*', '**/lib/firebase/firestore'], message: 'UI must not access Firestore directly — use a repository/service (Phase 3 §41).' },
+          ],
+        },
+      ],
+    },
+  },
 );

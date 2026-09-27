@@ -542,3 +542,27 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
 | floats (₹) | integer paise |
 | hard delete | `deletedAt` tombstone |
 | journal delete-and-repost | `status: 'voided'` + repost |
+
+---
+
+## 11. Phase 3 addendum — implemented representations
+
+- **Money:** integer paise everywhere (§2), implemented in `@hynish/domain/money` (`Money.*`,
+  `roundHalfUp`, `formatINR`). No floats persisted.
+- **Timestamps (canonical, §52):** the DOMAIN represents instants as **epoch milliseconds**
+  (numbers) under the same field names Firestore uses (`createdAt`, `updatedAt`, `deletedAt`,
+  `at`, `voidedAt`, `returnedAt`, `lastInteractiveSignInAt`). Firestore stores them as
+  `Timestamp` (written by Cloud Functions via `serverTimestamp()`); the converter
+  (`infrastructure/firestore/converter.ts`) deep-converts `Timestamp → ms` on read. Business
+  dates remain `'YYYY-MM-DD'` strings.
+- **Schemas:** every entity in §6 has a Zod schema in `@hynish/domain/schemas` (the source of the
+  TS types via `z.infer`), with Create/Update DTOs where a client/service submits data. Reads are
+  validated by the converter — no `doc.data() as T`.
+- **Soft delete (§36 decision):** entities that can be removed carry `deletedAt`/`deletedBy`
+  tombstones (queries filter `deletedAt == null`). Immutable ledgers (stock movements, journal
+  entries, activity log) are never deleted — journal entries are `voided` instead.
+- **IDs (§51):** persisted documents use Firestore auto-ids; server-sensitive ids (number
+  reservations, idempotency keys) are server-generated; `newId()` is for local/optimistic use only.
+- **Numbering:** counters live in `businesses/{b}/counters/{seriesKey}`; each issued number writes
+  a reservation in `businesses/{b}/documentNumbers/{numberKey}` inside one transaction
+  (`functions/src/numbering/reserve-core.ts`) — collision-free across devices (fixes KL-01).

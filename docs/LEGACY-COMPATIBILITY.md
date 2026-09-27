@@ -1171,3 +1171,15 @@ Each limitation in TD §9 and how the rebuild treats it:
 - Feature items (`LC-*`): **156**
 - Application defaults (`DEF-*`): **76**
 - Known limitations assessed (`KL-*`): **23**
+
+---
+
+## Phase 3 compatibility check
+
+The domain foundation preserves every audited default and rule (see `docs/PHASE-3-COMPLETION.md`
+for the full checklist and test references): numbering prefixes/sequences, the six independent
+series, GST intra/inter/without-GST behavior and the rate suggestion, the low-stock default of 5,
+shortage-as-warning, the 14-account chart with preserved ids, the journal debit=credit invariant,
+and all business-settings fields. Legacy limitations were **not** reproduced: server-authoritative
+atomic numbering replaces per-device counters (verified collision-free), normalized collections
+replace `data/main`, and repositories are read-only client-side with server-authoritative writes.

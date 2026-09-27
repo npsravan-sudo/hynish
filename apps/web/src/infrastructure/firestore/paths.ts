@@ -1,0 +1,36 @@
+/**
+ * Canonical Firestore paths (§37). Single source for collection/document locations, so paths
+ * are never hand-typed in features. Mirrors DATA-MODEL §4. No shared `data/main` document.
+ */
+export const paths = {
+  user: (uid: string) => `users/${uid}`,
+  business: (b: string) => `businesses/${b}`,
+  members: (b: string) => `businesses/${b}/members`,
+  member: (b: string, uid: string) => `businesses/${b}/members/${uid}`,
+  settingsBusiness: (b: string) => `businesses/${b}/settings/business`,
+  settingsIntegrations: (b: string) => `businesses/${b}/settings/integrations`,
+  counters: (b: string) => `businesses/${b}/counters`,
+  counter: (b: string, seriesKey: string) => `businesses/${b}/counters/${seriesKey}`,
+  locations: (b: string) => `businesses/${b}/locations`,
+  products: (b: string) => `businesses/${b}/products`,
+  customers: (b: string) => `businesses/${b}/customers`,
+  suppliers: (b: string) => `businesses/${b}/suppliers`,
+  invoices: (b: string) => `businesses/${b}/invoices`,
+  quotations: (b: string) => `businesses/${b}/quotations`,
+  deliveryNotes: (b: string) => `businesses/${b}/deliveryNotes`,
+  creditNotes: (b: string) => `businesses/${b}/creditNotes`,
+  debitNotes: (b: string) => `businesses/${b}/debitNotes`,
+  purchases: (b: string) => `businesses/${b}/purchases`,
+  payments: (b: string) => `businesses/${b}/payments`,
+  stockLevels: (b: string) => `businesses/${b}/stockLevels`,
+  stockMovements: (b: string) => `businesses/${b}/stockMovements`,
+  accounts: (b: string) => `businesses/${b}/accounts`,
+  journalEntries: (b: string) => `businesses/${b}/journalEntries`,
+  expenseCategories: (b: string) => `businesses/${b}/expenseCategories`,
+  expenses: (b: string) => `businesses/${b}/expenses`,
+  cashEntries: (b: string) => `businesses/${b}/cashEntries`,
+  payrollEntries: (b: string) => `businesses/${b}/payrollEntries`,
+  staff: (b: string) => `businesses/${b}/staff`,
+  staffPayments: (b: string) => `businesses/${b}/staffPayments`,
+  activityLog: (b: string) => `businesses/${b}/activityLog`,
+} as const;

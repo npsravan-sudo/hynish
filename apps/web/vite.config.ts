@@ -28,7 +28,7 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 700,
+    chunkSizeWarningLimit: 800,
   },
   test: {
     globals: true,

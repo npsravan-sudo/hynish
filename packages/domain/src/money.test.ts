@@ -32,3 +32,31 @@ describe('money — BR-MNY (integer paise)', () => {
     expect(roundHalfUp(-3, 2)).toBe(-2);
   });
 });
+
+import { Money } from './money.js';
+describe('Money ops (BR-MNY)', () => {
+  it('adds, subtracts, sums as integers', () => {
+    expect(Money.add(150, 250)).toBe(400);
+    expect(Money.subtract(500, 200)).toBe(300);
+    expect(Money.sum([100, 200, 300])).toBe(600);
+  });
+  it('percentage uses basis points, half-up', () => {
+    expect(Money.percentage(90000, 500)).toBe(4500); // 5%
+    expect(Money.percentage(81000, 250)).toBe(2025); // 2.5%
+  });
+  it('multiply/divide round to whole paise', () => {
+    expect(Money.multiply(45000, 2)).toBe(90000);
+    expect(Money.multiply(10011, 1)).toBe(10011);
+    expect(Money.divide(100, 3)).toBe(33);
+  });
+  it('compares and clamps', () => {
+    expect(Money.compare(100, 200)).toBe(-1);
+    expect(Money.compare(200, 200)).toBe(0);
+    expect(Money.clampNonNegative(-50)).toBe(0);
+    expect(Money.max(10, 20)).toBe(20);
+  });
+  it('rounds to the nearest rupee with roundOff', () => {
+    expect(Money.roundToRupee(94512)).toEqual({ rounded: 94500, roundOff: -12 });
+    expect(Money.roundToRupee(94550)).toEqual({ rounded: 94600, roundOff: 50 });
+  });
+});

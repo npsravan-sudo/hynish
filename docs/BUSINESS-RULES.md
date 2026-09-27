@@ -343,3 +343,24 @@
 | PRM | 9 |
 | BAK / ADM | 5 / 4 |
 | **Total** | **195** |
+
+---
+
+## Phase 3 — implemented, tested rule engines
+
+The following rules are now implemented as pure, tested functions in `@hynish/domain` (the single
+source reused by the client and Cloud Functions):
+
+| Rules | Implementation | Tests |
+|---|---|---|
+| BR-MNY-* (money, paise, round-off) | `money.ts` (`Money.*`, `roundHalfUp`) | `money.test.ts` |
+| BR-DAT-* (FY label, business dates, timezone) | `fy.ts`, `dates.ts` | `fy.test.ts` |
+| BR-GST-01..06, 18 (tax type, line math, totals, suggestion) | `gst.ts` | `gst.test.ts` |
+| BR-NUM-01/02/09 (format, series, fallback) + KL-01 fix | `numbering.ts`, `functions/numbering` | `numbering.test.ts`, `numbering.emu.test.ts` |
+| BR-ACC-01/02/03/06 (journal invariant, chart, normal side, cash/bank) | `accounting.ts` | `accounting.test.ts` |
+| BR-STK-04/05/06 (low stock 5, status, shortage-as-warning), units | `inventory.ts` | `inventory.test.ts` |
+| Legacy defaults (§54/§55) + theme migration | `legacy-defaults.ts` | `legacy-defaults.test.ts` |
+
+Server-authoritative posting rules (BR-ACC-04/05 postJournal, BR-STK-03 stock writes,
+BR-INV/PAY workflows) have their contracts defined (`AccountingService`, `InventoryService`,
+`DocumentNumberService`) and are implemented per module in later phases.

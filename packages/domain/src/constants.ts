@@ -54,3 +54,72 @@ export const OUTSTANDING_THRESHOLD_PAISE = 50;
 
 /** Default business timezone (BR-DAT-03). */
 export const DEFAULT_TIMEZONE = 'Asia/Kolkata';
+
+/** Document types (LEGACY-COMPATIBILITY §14; DATA-MODEL). Central enum — no string literals. */
+export const DOCUMENT_TYPES = [
+  'invoice_gst',
+  'invoice_nogst',
+  'quotation',
+  'delivery_note',
+  'credit_note',
+  'debit_note',
+  'purchase',
+] as const;
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/** Which document types draw a number from which series (BR-NUM-01). Purchases are not numbered. */
+export const DOCUMENT_TYPE_SERIES: Partial<Record<DocumentType, SeriesKey>> = {
+  invoice_gst: 'invoice_gst',
+  invoice_nogst: 'invoice_nogst',
+  quotation: 'quotation',
+  delivery_note: 'delivery_note',
+  credit_note: 'credit_note',
+  debit_note: 'debit_note',
+};
+
+/** Payment status buckets (BR-PAY-02). */
+export const PAYMENT_STATUSES = ['paid', 'partial', 'unpaid'] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/** Tax type (BR-GST-01). */
+export const TAX_TYPES = ['intra', 'inter'] as const;
+export type TaxType = (typeof TAX_TYPES)[number];
+
+/** Cash Book categories (DEF-038/039, BR-CASH-01). Verified from TD §6.3. */
+export const CASH_IN_CATEGORIES = [
+  'Sales Collection (Cash)',
+  'Customer Payment Received',
+  'Capital Introduced',
+  'Loan/Advance Received',
+  'Other Income',
+] as const;
+export const CASH_OUT_CATEGORIES = [
+  'Supplier Payment',
+  'Expense Payment',
+  'Staff Salary/Commission',
+  'Owner Drawings',
+  'Bank Deposit',
+  'Loan Repayment',
+  'Other',
+] as const;
+export type CashInCategory = (typeof CASH_IN_CATEGORIES)[number];
+export type CashOutCategory = (typeof CASH_OUT_CATEGORIES)[number];
+
+/**
+ * Sync interval options in minutes (LEGACY-COMPATIBILITY DEF-048, TD §3.2). The legacy default
+ * was 2. In the new architecture interval sync is SUPERSEDED by realtime + server writes; this
+ * enum is retained only to preserve the user's stored preference meaning during migration.
+ */
+export const SYNC_INTERVAL_OPTIONS = [0, 1, 2, 5, 10, 15, 30, 60] as const;
+export type SyncIntervalMinutes = (typeof SYNC_INTERVAL_OPTIONS)[number];
+export const DEFAULT_SYNC_INTERVAL_MINUTES: SyncIntervalMinutes = 2;
+
+/** Theme preference (Phase 1 §17). Legacy stored only light/dark; System is the new addition. */
+export const THEME_MODES = ['light', 'dark', 'system'] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+
+/** Document lifecycle statuses. */
+export const QUOTATION_STATUSES = ['open', 'converted'] as const;
+export type QuotationStatus = (typeof QUOTATION_STATUSES)[number];
+export const DELIVERY_NOTE_STATUSES = ['pending', 'invoiced', 'returned'] as const;
+export type DeliveryNoteStatus = (typeof DELIVERY_NOTE_STATUSES)[number];
