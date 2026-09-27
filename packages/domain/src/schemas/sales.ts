@@ -113,6 +113,20 @@ export const quotationSchema = entity.merge(softDelete).extend({
 });
 export type Quotation = z.infer<typeof quotationSchema>;
 
+/**
+ * Draft quotation the client submits. Quotations always apply GST via the generic tax engine
+ * (BR-QUO-02, §18) — there is no "Without GST" toggle here; the Without-GST default belongs to the
+ * New Bill workflow only. Server computes taxes/totals and never touches stock/accounting (BR-QUO-02).
+ */
+export const createQuotationSchema = z.object({
+  locationId: z.string().min(1),
+  date: businessDate,
+  customerId: z.string().nullable(),
+  lines: z.array(draftInvoiceLineSchema).min(1).max(500),
+  notes: z.string().default(''),
+});
+export type CreateQuotation = z.infer<typeof createQuotationSchema>;
+
 export const deliveryNoteLineSchema = z.object({
   lineId: z.string().min(1),
   productId: z.string().min(1),

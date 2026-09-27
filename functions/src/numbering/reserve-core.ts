@@ -6,7 +6,7 @@
  * This core takes an Admin Firestore instance so it is testable against the emulator. The
  * callable (reserve.ts) wraps it with auth + permission.
  */
-import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { FieldValue, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import {
   formatDocumentNumber,
   fyLabel,
@@ -25,42 +25,54 @@ export interface ReserveCoreInput {
 
 const numberKey = (n: string) => n.replace(/\//g, '_');
 
-export async function reserveNumber(db: Firestore, input: ReserveCoreInput): Promise<ReserveNumberResult> {
+/**
+ * Reserve the next number INSIDE a caller-provided transaction, so numbering can be atomic with a
+ * larger operation (invoice finalization, BR-NUM-05/11). IMPORTANT: this both reads and writes, so
+ * the caller must not have issued any writes on `tx` before calling it (Firestore reads-before-writes).
+ */
+export async function reserveNumberInTx(
+  tx: Transaction,
+  db: Firestore,
+  input: ReserveCoreInput,
+): Promise<ReserveNumberResult> {
   const { businessId, seriesKey, dateISO, actorUid } = input;
   const fy = fyLabel(dateISO);
   const counterRef = db.doc(`businesses/${businessId}/counters/${seriesKey}`);
   const settingsRef = db.doc(`businesses/${businessId}/settings/business`);
 
-  return db.runTransaction(async (tx) => {
-    const [counterSnap, settingsSnap] = await Promise.all([tx.get(counterRef), tx.get(settingsRef)]);
-    const counter = counterSnap.data() ?? {};
-    const fyScoped = counter.fyScoped === true;
+  const [counterSnap, settingsSnap] = await Promise.all([tx.get(counterRef), tx.get(settingsRef)]);
+  const counter = counterSnap.data() ?? {};
+  const fyScoped = counter.fyScoped === true;
 
-    // FY-scoped reset (only if enabled; default is a single continuous sequence — OQ-03).
-    let nextSeq: number = typeof counter.nextSeq === 'number' ? counter.nextSeq : DEFAULT_INITIAL_SEQ;
-    if (fyScoped && counter.fy && counter.fy !== fy) nextSeq = DEFAULT_INITIAL_SEQ;
+  // FY-scoped reset (only if enabled; default is a single continuous sequence — OQ-03).
+  let nextSeq: number = typeof counter.nextSeq === 'number' ? counter.nextSeq : DEFAULT_INITIAL_SEQ;
+  if (fyScoped && counter.fy && counter.fy !== fy) nextSeq = DEFAULT_INITIAL_SEQ;
 
-    const prefix =
-      (settingsSnap.data()?.prefixes?.[seriesKey] as string | undefined)?.trim() ||
-      DEFAULT_PREFIXES[seriesKey];
-    const number = formatDocumentNumber(prefix, fy, nextSeq);
+  const prefix =
+    (settingsSnap.data()?.prefixes?.[seriesKey] as string | undefined)?.trim() ||
+    DEFAULT_PREFIXES[seriesKey];
+  const number = formatDocumentNumber(prefix, fy, nextSeq);
 
-    const reservationRef = db.doc(`businesses/${businessId}/documentNumbers/${numberKey(number)}`);
-    const existing = await tx.get(reservationRef);
-    if (existing.exists) {
-      // Should not happen while the counter is authoritative; guards against manual counter edits.
-      throw new Error(`NUMBER_TAKEN:${number}`);
-    }
+  const reservationRef = db.doc(`businesses/${businessId}/documentNumbers/${numberKey(number)}`);
+  const existing = await tx.get(reservationRef);
+  if (existing.exists) {
+    // Should not happen while the counter is authoritative; guards against manual counter edits.
+    throw new Error(`NUMBER_TAKEN:${number}`);
+  }
 
-    tx.set(reservationRef, {
-      seriesKey, number, fy, seq: nextSeq, issuedAt: FieldValue.serverTimestamp(), issuedBy: actorUid,
-    });
-    tx.set(
-      counterRef,
-      { seriesKey, nextSeq: nextSeq + 1, fyScoped, fy, updatedAt: FieldValue.serverTimestamp(), updatedBy: actorUid },
-      { merge: true },
-    );
-
-    return { number, seriesKey, fy, seq: nextSeq };
+  tx.set(reservationRef, {
+    seriesKey, number, fy, seq: nextSeq, issuedAt: FieldValue.serverTimestamp(), issuedBy: actorUid,
   });
+  tx.set(
+    counterRef,
+    { seriesKey, nextSeq: nextSeq + 1, fyScoped, fy, updatedAt: FieldValue.serverTimestamp(), updatedBy: actorUid },
+    { merge: true },
+  );
+
+  return { number, seriesKey, fy, seq: nextSeq };
+}
+
+/** Standalone reservation (the `reserveDocumentNumber` callable path). Wraps reserveNumberInTx. */
+export async function reserveNumber(db: Firestore, input: ReserveCoreInput): Promise<ReserveNumberResult> {
+  return db.runTransaction((tx) => reserveNumberInTx(tx, db, input));
 }

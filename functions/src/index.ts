@@ -16,7 +16,13 @@ export { saveCustomer, setCustomerActive } from './masterdata/customers.js';
 export { saveSupplier, setSupplierActive } from './masterdata/suppliers.js';
 export { saveLocation, setLocationActive } from './masterdata/locations.js';
 
-// Boundary note (§60): future server-authoritative operations — postJournal, recordStockMovement,
-// postInvoice, postPurchase, postPayment — have their request/response contracts and validation
-// in @hynish/domain (AccountingService, InventoryService, DocumentNumberService) and are
-// implemented in their module phases. reserveDocumentNumber is the concrete example this phase.
+// Sales (Phase 5) — server-authoritative billing, payments and quotations. Every financial value is
+// recomputed server-side; each op is atomic (numbering + document + journals) and idempotent.
+export { finalizeInvoice } from './sales/finalize-invoice.js';
+export { deleteInvoice } from './sales/delete-invoice.js';
+export { recordPayment } from './sales/record-payment.js';
+export { saveQuotation } from './sales/quotations.js';
+
+// Boundary note (§60): the remaining server-authoritative operations — recordStockMovement,
+// postPurchase — land in their module phases. Sales establishes the postJournal gateway
+// (accounting/post-core) and the invoice/payment stock-integration boundary for Phase 6.

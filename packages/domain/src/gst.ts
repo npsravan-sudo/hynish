@@ -103,3 +103,22 @@ export function totalsForCart(lines: readonly GstLineResult[]): GstTotals {
 export function suggestGstRateBp(wholesalePricePaise: number): GstRateBp {
   return wholesalePricePaise > 2500 * 100 ? 1800 : 500;
 }
+
+export interface ComputedCart {
+  lines: GstLineResult[];
+  totals: GstTotals;
+}
+
+/**
+ * Compute every line and the cart totals in one deterministic pass. The single calculation reused
+ * by the UI preview, the server-authoritative billing function and the tests (§22). The client
+ * preview is never authoritative — the server recomputes with this same function before posting.
+ */
+export function computeCart(
+  lines: readonly GstLineInput[],
+  taxType: TaxType,
+  gstApplicable: boolean,
+): ComputedCart {
+  const computed = lines.map((l) => computeGstLine(l, taxType, gstApplicable));
+  return { lines: computed, totals: totalsForCart(computed) };
+}

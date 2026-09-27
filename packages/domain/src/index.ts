@@ -15,6 +15,7 @@ export * from './gst.js';
 export * from './gst-states.js';
 export * from './numbering.js';
 export * from './accounting.js';
+export * from './posting.js';
 export * from './inventory.js';
 
 // Zod schemas & inferred entity types

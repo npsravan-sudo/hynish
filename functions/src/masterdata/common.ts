@@ -25,7 +25,8 @@ export function updateAudit(actorUid: string) {
 }
 
 export type ActivityAction =
-  | 'create' | 'update' | 'activate' | 'deactivate';
+  | 'create' | 'update' | 'activate' | 'deactivate'
+  | 'finalize' | 'edit' | 'delete' | 'payment' | 'convert';
 
 type SetFn = (ref: DocumentReference, data: DocumentData) => unknown;
 
