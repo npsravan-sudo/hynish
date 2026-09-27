@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# testing
+coverage/
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.local
+
+# vite
+.vite/
+
+# firebase
+.firebase/
+firebase-debug.log

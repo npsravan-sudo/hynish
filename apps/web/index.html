@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#172033" />
+    <meta name="description" content="Hynish Clothing — Wholesale Ledger ERP: billing, inventory, GST and accounting." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hynish ERP" />
+    <title>Hynish ERP</title>
+    <script>
+      // Anti-FOUC: apply the saved (or system) theme before React mounts (UI-UX §3.4).
+      (function () {
+        try {
+          var stored = localStorage.getItem('hynish:theme'); // 'light' | 'dark' | 'system'
+          var mode = stored || 'system';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var resolved = mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
+          var root = document.documentElement;
+          root.setAttribute('data-theme', resolved);
+          root.classList.toggle('dark', resolved === 'dark');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0F1626' : '#ffffff');
+        } catch (e) {
+          /* storage blocked (private mode): fall back to the light default already on <html> */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+/**
+ * Design tokens (UI-UX-SYSTEM §3–§6). Semantic tokens as HSL channel triplets so
+ * Tailwind can apply opacity. Light is the default; dark applies under
+ * :root[data-theme="dark"] and .dark. All colors live here — components use tokens only.
+ */
+
+:root {
+  --background: 220 33% 98%;
+  --foreground: 224 40% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 40% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 40% 12%;
+  --primary: 234 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 25% 94%;
+  --secondary-foreground: 224 40% 16%;
+  --muted: 220 22% 95%;
+  --muted-foreground: 220 12% 42%;
+  --accent: 234 83% 96%;
+  --accent-foreground: 234 70% 36%;
+  --border: 220 18% 89%;
+  --input: 220 18% 86%;
+  --ring: 234 83% 58%;
+
+  --success: 152 60% 36%;
+  --success-foreground: 0 0% 100%;
+  --warning: 36 92% 46%;
+  --warning-foreground: 36 90% 10%;
+  --danger: 356 72% 50%;
+  --danger-foreground: 0 0% 100%;
+  --info: 206 88% 46%;
+  --info-foreground: 0 0% 100%;
+
+  --chart-1: 234 83% 58%;
+  --chart-2: 152 62% 40%;
+  --chart-3: 36 92% 50%;
+  --chart-4: 350 80% 58%;
+  --chart-5: 206 90% 50%;
+  --chart-6: 262 83% 62%;
+
+  --radius: 0.875rem;
+
+  --shadow-xs: 0 1px 2px 0 hsl(224 40% 20% / 0.04);
+  --shadow-sm: 0 1px 3px 0 hsl(224 40% 20% / 0.08), 0 1px 2px -1px hsl(224 40% 20% / 0.06);
+  --shadow-md: 0 4px 12px -2px hsl(224 40% 20% / 0.1), 0 2px 6px -2px hsl(224 40% 20% / 0.06);
+  --shadow-lg: 0 12px 28px -6px hsl(224 40% 20% / 0.16), 0 6px 12px -6px hsl(224 40% 20% / 0.1);
+
+  /* Premium gradients (UI-UX §6). Never hand-rolled inside components. */
+  --gradient-sales: linear-gradient(135deg, hsl(234 83% 60%), hsl(262 83% 62%));
+  --gradient-revenue: linear-gradient(135deg, hsl(206 90% 50%), hsl(234 83% 60%));
+  --gradient-profit: linear-gradient(135deg, hsl(152 62% 40%), hsl(172 66% 38%));
+  --gradient-expense: linear-gradient(135deg, hsl(350 80% 58%), hsl(20 90% 56%));
+  --gradient-inventory: linear-gradient(135deg, hsl(38 92% 52%), hsl(24 94% 54%));
+  --gradient-customer: linear-gradient(135deg, hsl(262 83% 62%), hsl(292 76% 58%));
+  --gradient-warning: linear-gradient(135deg, hsl(42 96% 54%), hsl(30 94% 52%));
+  --gradient-info: linear-gradient(135deg, hsl(199 89% 52%), hsl(187 80% 44%));
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'],
+.dark {
+  --background: 224 40% 7%;
+  --foreground: 220 20% 94%;
+  --card: 224 34% 11%;
+  --card-foreground: 220 20% 94%;
+  --popover: 224 34% 13%;
+  --popover-foreground: 220 20% 94%;
+  --primary: 234 90% 68%;
+  --primary-foreground: 224 40% 8%;
+  --secondary: 224 25% 18%;
+  --secondary-foreground: 220 20% 92%;
+  --muted: 224 25% 15%;
+  --muted-foreground: 220 12% 66%;
+  --accent: 234 40% 20%;
+  --accent-foreground: 234 90% 86%;
+  --border: 224 22% 20%;
+  --input: 224 22% 24%;
+  --ring: 234 90% 68%;
+
+  --success: 152 55% 50%;
+  --success-foreground: 152 60% 8%;
+  --warning: 38 92% 58%;
+  --warning-foreground: 36 90% 8%;
+  --danger: 356 80% 64%;
+  --danger-foreground: 356 70% 8%;
+  --info: 206 90% 62%;
+  --info-foreground: 206 80% 8%;
+
+  --chart-1: 234 90% 70%;
+  --chart-2: 152 55% 55%;
+  --chart-3: 38 92% 60%;
+  --chart-4: 350 80% 66%;
+  --chart-5: 206 90% 64%;
+  --chart-6: 262 70% 70%;
+
+  --shadow-xs: 0 1px 2px 0 hsl(224 60% 2% / 0.4);
+  --shadow-sm: 0 1px 3px 0 hsl(224 60% 2% / 0.5), 0 1px 2px -1px hsl(224 60% 2% / 0.4);
+  --shadow-md: 0 4px 12px -2px hsl(224 60% 2% / 0.55), 0 2px 6px -2px hsl(224 60% 2% / 0.4);
+  --shadow-lg: 0 12px 28px -6px hsl(224 60% 2% / 0.65), 0 6px 12px -6px hsl(224 60% 2% / 0.5);
+
+  --gradient-sales: linear-gradient(135deg, hsl(234 70% 30%), hsl(262 60% 28%));
+  --gradient-revenue: linear-gradient(135deg, hsl(206 70% 26%), hsl(234 60% 28%));
+  --gradient-profit: linear-gradient(135deg, hsl(152 55% 20%), hsl(172 55% 18%));
+  --gradient-expense: linear-gradient(135deg, hsl(350 55% 28%), hsl(20 60% 24%));
+  --gradient-inventory: linear-gradient(135deg, hsl(38 70% 24%), hsl(24 70% 22%));
+  --gradient-customer: linear-gradient(135deg, hsl(262 55% 28%), hsl(292 50% 24%));
+  --gradient-warning: linear-gradient(135deg, hsl(42 70% 24%), hsl(30 70% 22%));
+  --gradient-info: linear-gradient(135deg, hsl(199 70% 24%), hsl(187 60% 20%));
+
+  color-scheme: dark;
+}
