@@ -515,3 +515,21 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
 - **`reserveDocumentNumber`** is the first server-authoritative operation; `postJournal`,
   `recordStockMovement`, `postInvoice/Purchase/Payment` have their contracts in `@hynish/domain`
   and land with their modules.
+
+## Phase 4 — Master data flow (implemented)
+
+- **UI → Hooks → Service → Callable → Firestore.** React components never touch Firestore/Storage
+  directly (ESLint-enforced). Reads go through the Phase 3 repositories (`use-paged-list`,
+  `use-entity`); writes go through `services/masterdata.service.ts`, the single write path, which
+  calls the `functions/src/masterdata/*` callables.
+- **Server-authoritative callables** — `saveProduct`/`setProductActive`/`setProductImage`,
+  `saveCustomer`/`setCustomerActive`, `saveSupplier`/`setSupplierActive`,
+  `saveLocation`/`setLocationActive` — each runs App Check + auth + Zod, then
+  `resolveActor` → `assertPermission` → (locations excepted, which are managed by an unrestricted
+  role) location/business isolation, then a transactional/batched write + audit.
+- **Pure business logic** stays in `packages/domain` (`gst-states.ts`, `text.ts`) so client, server
+  and rules agree; product invariants live in `functions/src/masterdata/validation.ts` (unit-tested,
+  firebase-admin-free).
+- **Location locking (Phase 5 dependency):** locations are soft-deleted, never removed, and the
+  "one active location" invariant is server-enforced, so a later phase can safely lock a session to a
+  location and rely on it continuing to exist and resolve.

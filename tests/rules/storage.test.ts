@@ -32,9 +32,15 @@ describe('Storage rules — product images (§41)', () => {
     await assertFails(uploadBytes(r, smallImage, imageMeta));
   });
 
-  it('allows a members-who-manage-products upload of a small image', async () => {
-    const r = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/a.jpg`);
+  it('allows an owner/admin (products.manage) to upload a small image', async () => {
+    const r = ref(authedStorage('admin'), `businesses/${BIZ}/products/p1/a.jpg`);
     await assertSucceeds(uploadBytes(r, smallImage, imageMeta));
+  });
+
+  it('denies a non-admin member (products.manage is owner/admin only)', async () => {
+    // shop can read product images but cannot upload them (Phase 4 §11 tightening).
+    const r = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/a.jpg`);
+    await assertFails(uploadBytes(r, smallImage, imageMeta));
   });
 
   it('denies uploads to another business', async () => {
@@ -48,13 +54,13 @@ describe('Storage rules — product images (§41)', () => {
   });
 
   it('denies non-image uploads', async () => {
-    const r = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/evil.txt`);
+    const r = ref(authedStorage('admin'), `businesses/${BIZ}/products/p1/evil.txt`);
     await assertFails(uploadBytes(r, smallImage, { contentType: 'text/plain' }));
   });
 
   it('denies oversize uploads (> 1MB)', async () => {
     const big = new Uint8Array(1024 * 1024 + 10);
-    const r = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/big.jpg`);
+    const r = ref(authedStorage('admin'), `businesses/${BIZ}/products/p1/big.jpg`);
     await assertFails(uploadBytes(r, big, imageMeta));
   });
 
@@ -74,14 +80,14 @@ describe('Storage rules — product images (§41)', () => {
 // Reference read: an uploaded product image is readable by a member of the business.
 describe('Storage rules — reads', () => {
   it('a member can read an uploaded product image', async () => {
-    const put = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/read.jpg`);
+    const put = ref(authedStorage('admin'), `businesses/${BIZ}/products/p1/read.jpg`);
     await assertSucceeds(uploadBytes(put, smallImage, imageMeta));
     const get = ref(authedStorage('accountant'), `businesses/${BIZ}/products/p1/read.jpg`);
     await assertSucceeds(getBytes(get));
   });
 
   it('a member of another business cannot read the image', async () => {
-    const put = ref(authedStorage('shop1'), `businesses/${BIZ}/products/p1/read2.jpg`);
+    const put = ref(authedStorage('admin'), `businesses/${BIZ}/products/p1/read2.jpg`);
     await assertSucceeds(uploadBytes(put, smallImage, imageMeta));
     const get = ref(authedStorage('outsider'), `businesses/${BIZ}/products/p1/read2.jpg`);
     await assertFails(getBytes(get));

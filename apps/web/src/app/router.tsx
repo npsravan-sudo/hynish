@@ -13,9 +13,23 @@ function page<M, K extends keyof M>(loader: () => Promise<M>, key: K) {
 }
 
 const DashboardPage = page(() => import('@/features/dashboard/dashboard-page'), 'DashboardPage');
-const CustomersPage = page(() => import('@/features/customers/customers-page'), 'CustomersPage');
 const PayrollPage = page(() => import('@/features/payroll/payroll-page'), 'PayrollPage');
 const ReportsPage = page(() => import('@/features/reports/reports-page'), 'ReportsPage');
+
+// Master data (Phase 4). Each entity: list / new / :id / :id/edit.
+const ProductListPage = page(() => import('@/features/products/product-list-page'), 'ProductListPage');
+const ProductFormPage = page(() => import('@/features/products/product-form-page'), 'ProductFormPage');
+const ProductDetailPage = page(() => import('@/features/products/product-detail-page'), 'ProductDetailPage');
+const CategoryListPage = page(() => import('@/features/products/category-list-page'), 'CategoryListPage');
+const CustomerListPage = page(() => import('@/features/customers/customer-list-page'), 'CustomerListPage');
+const CustomerFormPage = page(() => import('@/features/customers/customer-form-page'), 'CustomerFormPage');
+const CustomerDetailPage = page(() => import('@/features/customers/customer-detail-page'), 'CustomerDetailPage');
+const SupplierListPage = page(() => import('@/features/suppliers/supplier-list-page'), 'SupplierListPage');
+const SupplierFormPage = page(() => import('@/features/suppliers/supplier-form-page'), 'SupplierFormPage');
+const SupplierDetailPage = page(() => import('@/features/suppliers/supplier-detail-page'), 'SupplierDetailPage');
+const LocationListPage = page(() => import('@/features/locations/location-list-page'), 'LocationListPage');
+const LocationFormPage = page(() => import('@/features/locations/location-form-page'), 'LocationFormPage');
+const LocationDetailPage = page(() => import('@/features/locations/location-detail-page'), 'LocationDetailPage');
 
 const sales = () => import('@/features/sales/sales-pages');
 const inv = () => import('@/features/inventory/inventory-pages');
@@ -57,18 +71,36 @@ const shellChildren: RouteObject[] = [
     path: 'inventory',
     children: [
       { index: true, element: <Navigate to="/inventory/products" replace /> },
-      { path: 'products', element: guarded(page(inv, 'ProductsPage'), 'products.view') },
+      { path: 'products', element: guarded(ProductListPage, 'products.view') },
+      { path: 'products/new', element: guarded(ProductFormPage, 'products.manage') },
+      { path: 'products/:id', element: guarded(ProductDetailPage, 'products.view') },
+      { path: 'products/:id/edit', element: guarded(ProductFormPage, 'products.manage') },
+      { path: 'categories', element: guarded(CategoryListPage, 'products.view') },
       { path: 'stock', element: guarded(page(inv, 'StockPage'), 'stock.view') },
       { path: 'stock-count', element: guarded(page(inv, 'StockCountPage'), 'stock.count') },
       { path: 'transfers', element: guarded(page(inv, 'TransfersPage'), 'stock.transfer') },
       { path: 'reorder', element: guarded(page(inv, 'ReorderPage'), 'reorder.view') },
       { path: 'purchases', element: guarded(page(inv, 'PurchasesPage'), 'purchases.view') },
-      { path: 'suppliers', element: guarded(page(inv, 'SuppliersPage'), 'suppliers.view') },
-      { path: 'locations', element: guarded(page(inv, 'LocationsPage'), 'locations.manage') },
+      { path: 'suppliers', element: guarded(SupplierListPage, 'suppliers.view') },
+      { path: 'suppliers/new', element: guarded(SupplierFormPage, 'suppliers.manage') },
+      { path: 'suppliers/:id', element: guarded(SupplierDetailPage, 'suppliers.view') },
+      { path: 'suppliers/:id/edit', element: guarded(SupplierFormPage, 'suppliers.manage') },
+      { path: 'locations', element: guarded(LocationListPage, 'locations.manage') },
+      { path: 'locations/new', element: guarded(LocationFormPage, 'locations.manage') },
+      { path: 'locations/:id', element: guarded(LocationDetailPage, 'locations.manage') },
+      { path: 'locations/:id/edit', element: guarded(LocationFormPage, 'locations.manage') },
     ],
   },
 
-  { path: 'customers', element: guarded(CustomersPage, 'customers.view') },
+  {
+    path: 'customers',
+    children: [
+      { index: true, element: guarded(CustomerListPage, 'customers.view') },
+      { path: 'new', element: guarded(CustomerFormPage, 'customers.manage') },
+      { path: ':id', element: guarded(CustomerDetailPage, 'customers.view') },
+      { path: ':id/edit', element: guarded(CustomerFormPage, 'customers.manage') },
+    ],
+  },
 
   {
     path: 'accounting',

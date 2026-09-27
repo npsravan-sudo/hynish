@@ -28,9 +28,9 @@ service firebase.storage {
     function underSize(mb) {
       return request.resource.size < mb * 1024 * 1024;
     }
-    // Mirrors packages/domain hasPermission for the write permissions used here.
+    // Product management is owner/admin only (products.manage in packages/domain).
     function canManageProducts(b) {
-      return isMember(b) && (isAdmin(b) || member(b).role in ['manager', 'shop', 'staff']);
+      return isAdmin(b);
     }
 
     // Business logo: readable by members; written only via the settings callable (server).

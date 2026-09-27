@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   /** Primary + secondary actions. Stack below the title on mobile (Phase 1 §43). */
   actions?: React.ReactNode;
   /** Optional filter row rendered under the header. */

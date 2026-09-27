@@ -7,10 +7,12 @@ export * from './permissions.js';
 export * from './errors.js';
 export * from './query.js';
 export * from './ids.js';
+export * from './text.js';
 export * from './legacy-defaults.js';
 
 // Domain calculators & contracts
 export * from './gst.js';
+export * from './gst-states.js';
 export * from './numbering.js';
 export * from './accounting.js';
 export * from './inventory.js';

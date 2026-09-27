@@ -18,6 +18,7 @@ import {
   CircleDollarSign,
   Boxes,
   Package,
+  Tags,
   Warehouse,
   ClipboardCheck,
   ArrowLeftRight,
@@ -87,6 +88,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Boxes,
     items: [
       { label: 'Products', to: '/inventory/products', icon: Package, permission: 'products.view' },
+      { label: 'Categories', to: '/inventory/categories', icon: Tags, permission: 'products.view' },
       { label: 'Stock', to: '/inventory/stock', icon: Warehouse, permission: 'stock.view' },
       { label: 'Stock Count', to: '/inventory/stock-count', icon: ClipboardCheck, permission: 'stock.count' },
       { label: 'Transfers', to: '/inventory/transfers', icon: ArrowLeftRight, permission: 'stock.transfer' },

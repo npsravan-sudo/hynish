@@ -566,3 +566,26 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
 - **Numbering:** counters live in `businesses/{b}/counters/{seriesKey}`; each issued number writes
   a reservation in `businesses/{b}/documentNumbers/{numberKey}` inside one transaction
   (`functions/src/numbering/reserve-core.ts`) — collision-free across devices (fixes KL-01).
+
+## Phase 4 — Master data collections (implemented)
+
+- **`products/{id}`** — full catalog doc: `name`/`nameLower`, `category` (free-text; no separate
+  category entity), `hsn`, `unit`, `wholesalePricePaise`/`purchasePricePaise` (integer paise),
+  `gstRateBp`, `barcode` (normalized upper-case; `''` if none), `lowStockThreshold` (null → default
+  5), `hasVariants` + `variants[]` (`'default'` when single), `altUnits[]`, `imagePath`,
+  `searchTokens[]`, and the soft-delete tombstone (`deletedAt`/`deletedBy`).
+- **`barcodes/{normalizedCode}`** — server-only uniqueness index (`{ productId, barcode }`) written
+  transactionally by `saveProduct`; enforces case-insensitive barcode uniqueness (fixes the legacy
+  client-only check). Client writes denied.
+- **`customers/{id}` / `suppliers/{id}`** — `name`/`nameLower`, `contactPerson`, `gstin`
+  (upper-cased; `''` = B2C), `stateCode` (derived from GSTIN, structured for future intra/inter-state
+  GST), `city`, `phone`, `address`, `searchTokens[]`, soft-delete; customers also carry
+  `creditLimitPaise` and `stats`.
+- **`locations/{id}`** — `name`, `type` (shop/warehouse), `address`, `openingCashBalancePaise`,
+  `isDefault`, `sortOrder`, soft-delete. At least one active location is always kept.
+- **Categories** are a **derived view** over `products.category`, not a stored collection.
+- **Indexes** (`firestore.indexes.json`): `products` by `deletedAt`+`nameLower`, by
+  `deletedAt`+`category`+`nameLower`, and `searchTokens[array]`+`nameLower`; the same name/token
+  indexes for `customers` and `suppliers`.
+- **Images** live in Storage at `businesses/{b}/products/{productId}/{imageId}.jpg`; the doc stores
+  only `imagePath`. Replacing/clearing deletes the old object server-side (fixes KL-03).

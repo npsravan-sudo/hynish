@@ -1183,3 +1183,15 @@ shortage-as-warning, the 14-account chart with preserved ids, the journal debit=
 and all business-settings fields. Legacy limitations were **not** reproduced: server-authoritative
 atomic numbering replaces per-device counters (verified collision-free), normalized collections
 replace `data/main`, and repositories are read-only client-side with server-authoritative writes.
+
+## Phase 4 — Master data parity (implemented)
+
+Preserved: free-text product categories (no invented entity), the barcode field and its uniqueness
+intent (now enforced server-side, case-insensitively — fixing the legacy client-only check),
+product variants and alternate units, GSTIN upper-casing with state derived from the GSTIN, the
+low-stock default of 5, and client-side substring search over loaded lists (BR-RPT-08).
+
+Legacy limitations **not** reproduced: product-image orphaning on replace (KL-03) is fixed by
+server-side deletion of the previous object; master-data writes are server-authoritative (client
+writes denied) instead of direct-to-`data/main`; and archiving is soft-delete so invoices, stock and
+journal references keep their frozen details instead of breaking.

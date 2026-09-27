@@ -1,6 +1,6 @@
 import { onCall, type CallableRequest, type CallableOptions } from 'firebase-functions/v2/https';
 import { HttpsError } from 'firebase-functions/v2/https';
-import { z, type ZodType } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import { REGION } from '../config/constants.js';
 import { appError } from '../utils/errors.js';
 import { logger } from 'firebase-functions/v2';
@@ -9,9 +9,9 @@ import { logger } from 'firebase-functions/v2';
  * Wrap a callable handler with: region, App Check (enforced in prod), Zod validation of the
  * payload, and consistent typed-error handling (Phase 2 §22, §34, §53, §54).
  */
-export function defineCallable<TInput, TOutput>(
-  schema: ZodType<TInput>,
-  handler: (input: TInput, request: CallableRequest) => Promise<TOutput>,
+export function defineCallable<S extends ZodTypeAny, TOutput>(
+  schema: S,
+  handler: (input: z.output<S>, request: CallableRequest) => Promise<TOutput>,
   options?: Partial<CallableOptions>,
 ) {
   return onCall(

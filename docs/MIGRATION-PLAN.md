@@ -240,3 +240,15 @@ The legacy calculations are ported as **reference implementations** into `tools/
 | After the window | Legacy stays archived read-only (not deleted) for audit. The legacy backups and the migration reports are retained. |
 
 At no point is legacy data deleted by the migration.
+
+## Phase 4 — Master data readiness (implemented)
+
+- The importer targets the Phase 4 collections directly: `products` (with derived `nameLower`,
+  `searchTokens`, normalized `barcode`, and a `barcodes/{code}` index entry per non-empty barcode),
+  `customers`/`suppliers` (GSTIN upper-cased, `stateCode` derived), and `locations`.
+- **Categories** need no migration — they are free-text `products.category` values surfaced as a
+  derived view, exactly as in legacy.
+- Barcode uniqueness is enforced on import via the same transactional index the app uses; duplicate
+  legacy barcodes surface as import conflicts rather than silent overwrites.
+- **Location locking (Phase 5):** because locations are soft-deleted and one active location is always
+  guaranteed, migration can seed locations first and later phases can lock to them safely.

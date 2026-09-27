@@ -364,3 +364,19 @@ source reused by the client and Cloud Functions):
 Server-authoritative posting rules (BR-ACC-04/05 postJournal, BR-STK-03 stock writes,
 BR-INV/PAY workflows) have their contracts defined (`AccountingService`, `InventoryService`,
 `DocumentNumberService`) and are implemented per module in later phases.
+
+## Phase 4 — Master data rules (implemented)
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-PRD-01 barcode unique (case-insensitive), no duplicate variants/alt-units, alt-unit ≠ base unit, barcode has no `/` | `functions/src/masterdata/{products,validation}.ts` | `functions/src/masterdata/validation.test.ts`, `tests/rules/masterdata.test.ts` |
+| BR-BAR-01 barcode normalized (trim + upper-case) | `packages/domain/src/text.ts` (`normalizeBarcode`) | `packages/domain/src/text.test.ts` |
+| BR-GST-15/16 GSTIN upper-cased + state auto-derived from GSTIN | `functions/src/masterdata/customers.ts` + `packages/domain/src/gst-states.ts` | `packages/domain/src/gst-states.test.ts` |
+| BR-CUS-02 / suppliers archive = soft-delete (history preserved) | `functions/src/masterdata/{customers,suppliers}.ts` | `tests/rules/masterdata.test.ts` |
+| BR-LOC-01 at least one active location must remain | `functions/src/masterdata/locations.ts` (transactional) | (emulator) |
+| BR-LOC-02 location archive = soft-delete (stock/journal refs stay valid) | `functions/src/masterdata/locations.ts` | — |
+| Server-authoritative writes; client writes denied for all master-data collections | `firestore.rules` | `tests/rules/masterdata.test.ts` |
+| Product-image upload = owner/admin (`products.manage`) | `storage.rules` | `tests/rules/storage.test.ts` |
+
+All master-data mutations are audited (create/update/activate/deactivate) via the Phase 3
+`activityLog`, written in the same batch/transaction as the change.

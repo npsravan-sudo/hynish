@@ -355,3 +355,16 @@ above is the target; the items below are implemented, tested and in the reposito
   `components/**`, keeping all data access behind repositories/services.
 - `reserveDocumentNumber` enforces auth + the per-series create permission before its
   transaction, so a user can only reserve numbers for documents they may create.
+
+## Phase 4 — Master data (implemented)
+
+- Firestore rules deny all client writes to `products`, `customers`, `suppliers`, `locations` and the
+  server-only `barcodes` uniqueness index; reads are permission-gated
+  (`products.view`/`customers.view`/`suppliers.view`; any member may read `locations`). Verified in
+  `tests/rules/masterdata.test.ts`.
+- Every mutation is a callable running the standard pipeline (App Check + auth + reauth window + Zod →
+  `resolveActor` → `assertPermission`), so permissions and business isolation are enforced
+  server-side, never in the UI. Deletes are **soft-deletes** (archive), preserving history.
+- Storage: product images live under `businesses/{b}/products/{productId}/…`; upload requires
+  owner/admin (`products.manage`), reads require membership, and replace/delete is server-only so
+  objects are never orphaned (KL-03). Verified in `tests/rules/storage.test.ts`.
