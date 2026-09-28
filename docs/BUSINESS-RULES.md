@@ -403,3 +403,26 @@ All master-data mutations are audited (create/update/activate/deactivate) via th
 
 Server-authoritative: client writes to invoices/quotations/payments/journalEntries are denied
 (`tests/rules/sales.test.ts`); every mutation is idempotent by requestId (`sales.emu.test.ts`).
+
+## Phase 6 — Purchases & inventory rules (implemented)
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-STK-01/02/03 per-cell stock; immutable ledger; CF-only writes in one txn | `inventory/stock-core.ts` | `inventory.emu.test.ts` |
+| BR-STK-04/05 low-stock default 5; out/low/healthy | `inventory.ts`, `stock-list-page.tsx` | `inventory.test.ts` (domain) |
+| BR-STK-06 negative only with stock.overrideNegative + confirmation | `stock-core.ts`, adjust/transfer/sale callers | `inventory.emu.test.ts` |
+| BR-STK-07 adjustment: qty>0, in/out, reason + note | `inventory/adjustments.ts` | server code |
+| BR-STK-08 transfer out+in atomic, source≠dest | `inventory/transfers.ts` | `inventory.emu.test.ts` (stacking) |
+| BR-STK-10 count: recompute-vs-live, zero-diff rejected, corrections as movements | `inventory/counts.ts` | server code |
+| BR-STK-15 opening stock as `opening` movement | `inventory/opening.ts` | server code |
+| BR-PUR-01/02 supplier + ≥1 item + qty>0; base-unit conversion | `purchases/finalize-purchase.ts` | server code |
+| BR-PUR-03 stock-in at location | `finalize-purchase.ts` | `inventory.emu.test.ts` (movement core) |
+| BR-PUR-04 Dr Inventory / Cr Cash / Cr AP (no GST) | `posting.ts` `journalLinesForPurchase` | `posting.test.ts` |
+| BR-PUR-05 purchasePrice updated for base-unit lines only | `finalize-purchase.ts` | server code |
+| BR-PUR-06 delete = reverse stock + void journals + soft-delete | `purchases/delete-purchase.ts` | server code |
+| BR-PUR-08 purchases carry no GST; acc-gst-input not posted (OQ-06) | `posting.ts`, `finalize-purchase.ts` | `posting.test.ts` |
+| BR-INV-05/07/11/13 sale stock-out, shortage warning, edit reverse-reapply, delete restore | `sales/finalize-invoice.ts`, `delete-invoice.ts` | server code |
+| BR-COGS-01/02 COGS = Σ purchasePrice×baseQty snapshot (no valuation invented) | `posting.ts`, `build-lines.ts` | `posting.test.ts` |
+
+Server-authoritative: client writes to stockLevels/stockMovements/purchases/stockTransfers/stockCounts
+are denied (`tests/rules/inventory.test.ts`); every mutation is idempotent by requestId.

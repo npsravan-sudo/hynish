@@ -262,3 +262,12 @@ At no point is legacy data deleted by the migration.
   migrated books reconcile to legacy `postJournal()` output.
 - Phase-6 dependency: stock movements for historical invoices are seeded by the Inventory migration;
   Phase 5 invoices already carry `baseQty`/`unitCostPaise`/`skipStockDeduction` for that step.
+
+## Phase 6 — Inventory & purchases readiness (implemented)
+
+- Historical stock is seeded as `migration_opening` / `opening` movements so every balance has
+  history; the derived `stockLevels` are written in the same transaction (never a silent balance).
+- Purchases import with the supplier's bill number (no generated series) and re-run the same
+  `journalLinesForPurchase` builder, so migrated books reconcile to legacy `journalLinesForPurchase`.
+- Product `purchasePrice` (the COGS cost basis, BR-COGS-02/BR-PUR-05) migrates on the product; no
+  valuation recomputation is performed (§63).

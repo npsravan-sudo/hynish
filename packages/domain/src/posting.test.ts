@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   journalLinesForInvoice, journalLinesForInvoiceCogs,
-  journalLinesForPaymentIn, journalLinesForPaymentOut,
+  journalLinesForPaymentIn, journalLinesForPaymentOut, journalLinesForPurchase,
   derivePaymentStatus, outstandingOf, isOutstanding,
 } from './posting.js';
 import { validateJournal } from './accounting.js';
@@ -68,6 +68,28 @@ describe('payment journal lines (BR-PAY-03/04)', () => {
     expect(lines).toContainEqual({ accountId: 'acc-ap', debitPaise: 5000, creditPaise: 0 });
     expect(lines).toContainEqual({ accountId: 'acc-bank', debitPaise: 0, creditPaise: 5000 });
     expect(validateJournal(lines).ok).toBe(true);
+  });
+});
+
+describe('journalLinesForPurchase (BR-PUR-04/08) — no GST', () => {
+  it('debits Inventory for the total, credits Cash paid-now and AP remainder', () => {
+    const lines = journalLinesForPurchase(10000, 4000);
+    expect(lines).toContainEqual({ accountId: 'acc-inventory', debitPaise: 10000, creditPaise: 0 });
+    expect(lines).toContainEqual({ accountId: 'acc-cash', debitPaise: 0, creditPaise: 4000 });
+    expect(lines).toContainEqual({ accountId: 'acc-ap', debitPaise: 0, creditPaise: 6000 });
+    expect(dr(lines)).toBe(cr(lines));
+    expect(validateJournal(lines).ok).toBe(true);
+    // Never posts GST input (BR-PUR-08 / OQ-06).
+    expect(lines.some((l) => l.accountId === 'acc-gst-input')).toBe(false);
+  });
+  it('fully paid → no AP line; unpaid → no cash line', () => {
+    expect(journalLinesForPurchase(10000, 10000).some((l) => l.accountId === 'acc-ap')).toBe(false);
+    expect(journalLinesForPurchase(10000, 0).some((l) => l.accountId === 'acc-cash')).toBe(false);
+  });
+  it('caps paid-now at the total', () => {
+    const lines = journalLinesForPurchase(10000, 15000);
+    expect(lines.find((l) => l.accountId === 'acc-cash')?.creditPaise).toBe(10000);
+    expect(dr(lines)).toBe(cr(lines));
   });
 });
 

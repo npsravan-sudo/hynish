@@ -611,3 +611,21 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
 - **Indexes:** invoices by (deletedAt,date) + (deletedAt,{location|customer|paymentStatus|seriesKey},
   date); quotations by (deletedAt,date)/(…,status)/(…,customer); payments by (deletedAt,date) and
   (targetType,targetId,date).
+
+## Phase 6 — Purchases & inventory collections (implemented)
+
+- **`stockMovements/{id}`** — immutable, append-only ledger (BR-STK-02): productId, variantId,
+  locationId, `type` (STOCK_MOVEMENT_TYPES), `qtyChange` (signed base units), `qtyAfter`,
+  reasonCategory, note, refType/refId, enteredUnit/enteredQty, unitCostPaise, createdAt/By. Source of truth.
+- **`stockLevels/{productId_variantId_locationId}`** — derived per-cell balance (qty, lastMovementId,
+  updatedAt), written only in the same transaction as its movement (BR-STK-03). Server-only.
+- **`purchases/{id}`** — date, locationId, supplierId + snapshot, `supplierBillNo` (no document
+  number, no GST), lines (productId/variantId/name/enteredUnit/enteredQty/baseQty/rate/amount),
+  totalPaise, initialPaid/paid/outstanding/paymentStatus, dueDate, notes, soft-delete.
+- **`stockTransfers/{id}`** — date, from/to location, items[], notes, shortagesOverridden.
+- **`stockCounts/{id}`** — date, locationId, lines[{system,counted,diff}], changedCount (summary; the
+  corrections are `adjustment` movements).
+- Client writes to all of the above are denied; every mutation is a Cloud Function.
+- Indexes: stockLevels (locationId+qty; productId+locationId); stockMovements (locationId+date;
+  productId+date; type+date; productId+locationId+date); purchases (deletedAt+date;
+  deletedAt+locationId+date; deletedAt+supplierId+date).

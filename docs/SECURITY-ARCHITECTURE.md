@@ -379,3 +379,14 @@ above is the target; the items below are implemented, tested and in the reposito
   (`tests/rules/sales.test.ts`).
 - Finalization/payment run in a single transaction (number reservation + document + journals +
   idempotency record), so a retry/timeout/double-tap can never create duplicates (§27/§35).
+
+## Phase 6 — Inventory & purchases (implemented)
+
+- All stock/purchase writes are server-authoritative callables (App Check + auth + Zod →
+  resolveActor → assertPermission → assertLocationAccess; transfers check BOTH locations). No
+  client-supplied stock qty / totals are trusted; balances change only via a recorded movement.
+- Firestore rules deny client writes to `stockLevels`, `stockMovements`, `purchases`,
+  `stockTransfers`, `stockCounts`; reads are gated by permission + location
+  (`tests/rules/inventory.test.ts`).
+- Negative stock requires the `stock.overrideNegative` permission AND an explicit confirmation
+  (BR-STK-06). Every op is idempotent by requestId; transactions guarantee no partial stock write.

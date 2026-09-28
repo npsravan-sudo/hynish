@@ -547,3 +547,16 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
 - **Integration boundary for Phase 6:** finalize/delete are the transactions where stock movements
   will be added; lines already carry baseQty/unitCost/skipStockDeduction. The `payment_out` /
   purchase path is stubbed in the domain for the Purchases phase.
+
+## Phase 6 — Inventory & purchases flow (implemented)
+
+- **Ledger-first stock:** `functions/src/inventory/stock-core.ts::applyMovementTx` writes an immutable
+  movement AND the derived stockLevel in one transaction; the balance is never mutated without a
+  movement (BR-STK-02/03). `readLevelTx` (read phase) → `applyMovementTx` (write phase).
+- **Purchase → stock-in:** `finalizePurchase` recomputes the total (no GST), records `purchase`
+  movements, updates base-unit `purchasePrice` (BR-PUR-05), posts Dr Inventory / Cr Cash / Cr AP.
+- **Sale → stock-out:** `finalizeInvoice` writes `sale` movements with a shortage warning + override,
+  edit reverses then reapplies, delete restores — all inside the existing sales transaction.
+- **Inventory ops** (adjust / transfer / count / opening) are server-authoritative, atomic,
+  idempotent callables over the same core; UI → service → callable → transaction → Firestore.
+- **Valuation:** none invented — COGS uses the purchasePrice snapshot (BR-COGS-01/02).

@@ -1209,3 +1209,16 @@ Legacy limitations NOT reproduced: per-device counters (KL-01) → server-author
 (verified collision-free under concurrency); direct client writes to `data/main` → server-only
 callables with balance-or-refuse posting; hard invoice delete → soft-delete keeping the number
 reserved; non-idempotent saves → requestId idempotency.
+
+## Phase 6 — Purchases & inventory parity (implemented)
+
+Preserved: per-(product,variant,location) stock, low-stock default 5, stock shortage as a warning
+(never a silent block), the movement-type vocabulary as an immutable append-only ledger, adjustment /
+transfer / stock-count / opening behaviours, purchases with NO GST and NO document number (supplier
+bill number), Dr Inventory / Cr Cash / Cr AP purchase posting, purchasePrice updated only for
+base-unit purchase lines, and COGS = Σ purchasePrice×baseQty snapshot.
+
+Legacy limitations NOT reproduced: client-side stock writes (KL, unsafe) → server-authoritative,
+atomic, idempotent Cloud Functions writing movement + level together; balances mutated without a
+reason → every change is a recorded movement; hard purchase delete → soft-delete + stock reversal +
+journal void. No inventory valuation method (FIFO/LIFO/average) was invented (§63).
