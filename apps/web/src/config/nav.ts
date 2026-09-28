@@ -90,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Products', to: '/inventory/products', icon: Package, permission: 'products.view' },
       { label: 'Categories', to: '/inventory/categories', icon: Tags, permission: 'products.view' },
       { label: 'Stock', to: '/inventory/stock', icon: Warehouse, permission: 'stock.view' },
+      { label: 'Movements', to: '/inventory/movements', icon: History, permission: 'stock.view' },
       { label: 'Stock Count', to: '/inventory/stock-count', icon: ClipboardCheck, permission: 'stock.count' },
       { label: 'Transfers', to: '/inventory/transfers', icon: ArrowLeftRight, permission: 'stock.transfer' },
       { label: 'Reorder', to: '/inventory/reorder', icon: RefreshCw, permission: 'reorder.view' },

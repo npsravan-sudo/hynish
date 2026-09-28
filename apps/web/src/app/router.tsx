@@ -42,6 +42,16 @@ const QuotationDetailPage = page(() => import('@/features/sales/quotation-detail
 const PaymentsPage = page(() => import('@/features/sales/payments-page'), 'PaymentsPage');
 const DuesPage = page(() => import('@/features/sales/dues-page'), 'DuesPage');
 
+// Inventory & Purchases (Phase 6).
+const StockListPage = page(() => import('@/features/inventory/stock-list-page'), 'StockListPage');
+const StockDetailPage = page(() => import('@/features/inventory/stock-detail-page'), 'StockDetailPage');
+const MovementHistoryPage = page(() => import('@/features/inventory/movement-history-page'), 'MovementHistoryPage');
+const TransferPage = page(() => import('@/features/inventory/transfer-page'), 'TransferPage');
+const StockCountPage = page(() => import('@/features/inventory/stock-count-page'), 'StockCountPage');
+const PurchaseListPage = page(() => import('@/features/purchases/purchase-list-page'), 'PurchaseListPage');
+const PurchaseFormPage = page(() => import('@/features/purchases/purchase-form-page'), 'PurchaseFormPage');
+const PurchaseDetailPage = page(() => import('@/features/purchases/purchase-detail-page'), 'PurchaseDetailPage');
+
 const sales = () => import('@/features/sales/sales-pages');
 const inv = () => import('@/features/inventory/inventory-pages');
 const acc = () => import('@/features/accounting/accounting-pages');
@@ -93,11 +103,15 @@ const shellChildren: RouteObject[] = [
       { path: 'products/:id', element: guarded(ProductDetailPage, 'products.view') },
       { path: 'products/:id/edit', element: guarded(ProductFormPage, 'products.manage') },
       { path: 'categories', element: guarded(CategoryListPage, 'products.view') },
-      { path: 'stock', element: guarded(page(inv, 'StockPage'), 'stock.view') },
-      { path: 'stock-count', element: guarded(page(inv, 'StockCountPage'), 'stock.count') },
-      { path: 'transfers', element: guarded(page(inv, 'TransfersPage'), 'stock.transfer') },
+      { path: 'stock', element: guarded(StockListPage, 'stock.view') },
+      { path: 'stock/:productId', element: guarded(StockDetailPage, 'stock.view') },
+      { path: 'movements', element: guarded(MovementHistoryPage, 'stock.view') },
+      { path: 'stock-count', element: guarded(StockCountPage, 'stock.count') },
+      { path: 'transfers', element: guarded(TransferPage, 'stock.transfer') },
       { path: 'reorder', element: guarded(page(inv, 'ReorderPage'), 'reorder.view') },
-      { path: 'purchases', element: guarded(page(inv, 'PurchasesPage'), 'purchases.view') },
+      { path: 'purchases', element: guarded(PurchaseListPage, 'purchases.view') },
+      { path: 'purchases/new', element: guarded(PurchaseFormPage, 'purchases.manage') },
+      { path: 'purchases/:id', element: guarded(PurchaseDetailPage, 'purchases.view') },
       { path: 'suppliers', element: guarded(SupplierListPage, 'suppliers.view') },
       { path: 'suppliers/new', element: guarded(SupplierFormPage, 'suppliers.manage') },
       { path: 'suppliers/:id', element: guarded(SupplierDetailPage, 'suppliers.view') },
