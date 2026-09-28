@@ -390,3 +390,26 @@ above is the target; the items below are implemented, tested and in the reposito
   (`tests/rules/inventory.test.ts`).
 - Negative stock requires the `stock.overrideNegative` permission AND an explicit confirmation
   (BR-STK-06). Every op is idempotent by requestId; transactions guarantee no partial stock write.
+
+## Phase 7 — Accounting, ledger & cash (implemented)
+
+- All accounting writes are server-authoritative callables (App Check + auth + Zod →
+  resolveActor → assertPermission → assertLocationAccess where applicable). `postJournalTx` is the
+  ONE place a journal entry can be created, and it independently re-validates the debit=credit
+  invariant server-side — client-supplied totals are never trusted, matching Sales/Purchases.
+- `accounts.manage` gates `seedChartOfAccounts`, `saveAccount`, `deleteAccount`; `cashbook.manage`
+  gates `logCashEntry` (+ `assertLocationAccess` — a Cash Book entry is location-scoped);
+  `accounting.view`/`cashbook.view` gate all reads, matching the Firestore rules.
+- Firestore rules deny client writes to `accounts`, `journalEntries`, `cashEntries`; reads are
+  gated by permission (+ location for `cashEntries`) — `tests/rules/accounting.test.ts` covers
+  denial, permission-gating and cross-business isolation.
+- `deleteAccount` refuses to delete a system account (`isSystem`) and refuses to delete any account
+  still referenced by a journal line (checked via the `accountIds array-contains` query) —
+  balances can never be silently orphaned.
+- No generic manual-journal-entry callable and no generic `reverseJournal` callable exist — this is
+  a deliberate reduction of attack surface, not an oversight: TD §6.1 confirms the source itself
+  never exposes a free-form debit/credit entry point to business users outside the Chart of
+  Accounts, so Sales/Purchases/Cash Book are the only paths that can ever reach `postJournalTx`.
+- Reconciliation helpers (`findUnbalancedEntries`, `findDuplicatePostedRefs`, `findOrphanAccountRefs`,
+  §49) are detection-only — they return findings for an operator to review; nothing calls them to
+  auto-mutate the ledger.

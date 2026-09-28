@@ -426,3 +426,23 @@ Server-authoritative: client writes to invoices/quotations/payments/journalEntri
 
 Server-authoritative: client writes to stockLevels/stockMovements/purchases/stockTransfers/stockCounts
 are denied (`tests/rules/inventory.test.ts`); every mutation is idempotent by requestId.
+
+## Phase 7 — Accounting, ledger & cash rules (implemented)
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-ACC-01/02/03 debit=credit, no zero/empty lines, one side per line | `accounting.ts::validateJournal` | `accounting.test.ts` (domain) |
+| BR-ACC-04 ONE posting gateway; never trusts client totals | `functions/src/accounting/post-core.ts::postJournalTx` | `accounting.emu.test.ts`, `sales.emu.test.ts` |
+| BR-ACC-05 edit/delete = void prior posted entries then re-post | `post-core.ts::readPostedJournalsForRef/voidEntries` | `sales.emu.test.ts` |
+| BR-ACC-06/07 normal side + balance by account type | `accounting.ts::normalSide/accountBalance` | `accounting.test.ts` (domain) |
+| BR-ACC-06 seed default Chart of Accounts (14 system accounts), idempotent | `accounting/seed-accounts.ts` | code review (single-purpose callable; see §22 note) |
+| BR-ACC-16 General Ledger: per-account running balance via `accountIds` array-contains, chronological | `general-ledger-page.tsx`, `accountIds` index | `accounting.emu.test.ts` |
+| BR-ACC-13/14/15 Trial Balance / P&L / Balance Sheet computed live, nothing cached | `trial-balance-page.tsx`, `profit-loss-page.tsx`, `balance-sheet-page.tsx`, `use-ledger-aggregate.ts` | domain balance math covered by `accounting.test.ts` |
+| BR-ACC-18 custom account: reject duplicate name (case-insensitive), auto-code = max(code of type)+10 | `accounting/save-account.ts` | `createAccountSchema` covered by `accounting.test.ts` (domain); transaction logic by code review |
+| BR-ACC-19 auto-assigned expense-category account codes start at 5100, step 10 | `accounting.ts::EXPENSE_ACCOUNT_CODE_START/STEP` | domain constants |
+| BR-CASH-01..04 Cash Book is a separate ledger; never posts to the journal; balance = opening + all-time net, per location (no combined total) | `accounting/cash-book.ts`, `cash-book-page.tsx` | rules-tested for isolation (`accounting.test.ts` rules) |
+| §49 reconciliation (unbalanced / duplicate posted refs / orphan account refs) is detection-only, never auto-repaired | `accounting.ts::findUnbalancedEntries/findDuplicatePostedRefs/findOrphanAccountRefs` | `accounting.test.ts` (domain) |
+| §65 no invented accounting: no generic manual-journal-entry UI/callable, no generic `reverseJournal` — TD §6.1 ("never touches a debit/credit screen directly except in the Chart of Accounts") | *(deliberately not built)* | see `docs/PHASE-7-COMPLETION.md` |
+
+Server-authoritative: client writes to accounts/journalEntries/cashEntries are denied
+(`tests/rules/accounting.test.ts`); every mutation is idempotent by requestId.

@@ -9,6 +9,7 @@ import { createMasterDataService, type MasterDataService } from '@/services/mast
 import { createSalesService, type SalesService } from '@/services/sales.service';
 import { createInventoryService, type InventoryService } from '@/services/inventory.service';
 import { createPurchasesService, type PurchasesService } from '@/services/purchases.service';
+import { createAccountingService, type AccountingService } from '@/services/accounting.service';
 
 export function useRepositories(): Repositories {
   const businessId = useAuthStore((s) => s.businessId);
@@ -33,4 +34,9 @@ export function useInventoryService(): InventoryService {
 export function usePurchasesService(): PurchasesService {
   const businessId = useAuthStore((s) => s.businessId);
   return useMemo(() => createPurchasesService(businessId), [businessId]);
+}
+
+export function useAccountingService(): AccountingService {
+  const businessId = useAuthStore((s) => s.businessId);
+  return useMemo(() => createAccountingService(businessId), [businessId]);
 }

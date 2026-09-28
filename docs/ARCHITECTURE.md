@@ -560,3 +560,29 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
 - **Inventory ops** (adjust / transfer / count / opening) are server-authoritative, atomic,
   idempotent callables over the same core; UI → service → callable → transaction → Firestore.
 - **Valuation:** none invented — COGS uses the purchasePrice snapshot (BR-COGS-01/02).
+
+## Phase 7 — Accounting, ledger & financial statements flow (implemented)
+
+- **One posting gateway:** `functions/src/accounting/post-core.ts::postJournalTx` remains the ONLY
+  place a journal entry is written — Sales, Purchases and (new) Cash Book/Accounts management all
+  reuse it or stay entirely off the journal by design (§53 no duplicate accounting logic). No React
+  component posts journals directly; there is no generic manual-journal-entry callable.
+- **accountIds derivation:** `postJournalTx` now also stores the distinct `accountIds` referenced by
+  an entry's lines, letting the General Ledger query `journalEntries` by
+  `accountIds array-contains {id}` and letting `deleteAccount` refuse deletion of a referenced
+  account — without a second denormalized "account usage" table.
+- **Chart of Accounts:** `seedChartOfAccounts` is the first writer of the 14 default `Account`
+  documents (idempotent, per-doc existence check); `saveAccount` creates custom accounts
+  (duplicate-name rejection, auto-code); `deleteAccount` refuses system accounts and
+  referenced accounts.
+- **Cash Book** (`accounting/cash-book.ts::logCashEntry`) is a parallel, deliberately unconnected
+  ledger — it never calls `postJournalTx` (BR-CASH-02, TD §6.3).
+- **Financial statements are read-only aggregations**, not new persisted structures: General Ledger,
+  Trial Balance, P&L, Balance Sheet, Receivables and Payables all recompute from `journalEntries`
+  (+ `invoices`/`purchases`) client-side via `useLedgerAggregate` — a bounded (5000-entry-capped),
+  cursor-paginated full fetch that surfaces a `truncated` flag rather than silently either
+  downloading an unbounded history or under-reporting the books.
+- **Deliberately not built (§65 do-not-invent):** a generic manual-journal-entry UI/callable and a
+  generic `reverseJournal` callable — TD §6.1 states the business user never touches a
+  debit/credit screen directly except in the Chart of Accounts itself; reversal only happens via
+  the existing Sales/Purchases void-then-repost edit/delete flows (BR-ACC-05).

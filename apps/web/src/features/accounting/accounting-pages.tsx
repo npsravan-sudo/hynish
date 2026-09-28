@@ -1,100 +1,14 @@
 import { ModulePlaceholder } from '@/features/_shared/module-placeholder';
-import {
-  BookOpen,
-  BookText,
-  Scale,
-  TrendingUp,
-  Landmark,
-  Banknote,
-  Coins,
-  FileCheck2,
-} from 'lucide-react';
+import { Coins, FileCheck2 } from 'lucide-react';
 
-const ACC_PHASE = 'Phase 5';
-
-export function ChartOfAccountsPage() {
-  return (
-    <ModulePlaceholder
-      title="Chart of Accounts"
-      description="14 system accounts plus per-category expense accounts."
-      icon={BookOpen}
-      phase={ACC_PHASE}
-      legacyRefs={['System accounts cannot be deleted; no delete once posted to (BR-ACC-17).']}
-    />
-  );
-}
-
-export function JournalPage() {
-  return (
-    <ModulePlaceholder
-      title="Journal"
-      description="Double-entry journal (server-posted)."
-      icon={BookText}
-      phase={ACC_PHASE}
-      legacyRefs={['Every entry balances exactly; edits void-and-repost (BR-ACC-01/05).']}
-    />
-  );
-}
-
-export function GeneralLedgerPage() {
-  return (
-    <ModulePlaceholder
-      title="General Ledger"
-      description="Per-account running balances."
-      icon={BookText}
-      phase={ACC_PHASE}
-      legacyRefs={['Sorted by date then createdAt (BR-ACC-16).']}
-    />
-  );
-}
-
-export function TrialBalancePage() {
-  return (
-    <ModulePlaceholder
-      title="Trial Balance"
-      description="All-time, all-locations balance check."
-      icon={Scale}
-      phase={ACC_PHASE}
-      legacyRefs={['Balanced when total debit = total credit (BR-ACC-13).']}
-    />
-  );
-}
-
-export function ProfitLossPage() {
-  return (
-    <ModulePlaceholder
-      title="Profit & Loss"
-      description="Income − COGS − expenses."
-      icon={TrendingUp}
-      phase={ACC_PHASE}
-      legacyRefs={['Defaults to month-to-date (BR-ACC-14).']}
-    />
-  );
-}
-
-export function BalanceSheetPage() {
-  return (
-    <ModulePlaceholder
-      title="Balance Sheet"
-      description="Assets, liabilities and equity as of a date."
-      icon={Landmark}
-      phase={ACC_PHASE}
-      legacyRefs={['Retained earnings = lifetime income − expense (BR-ACC-15).']}
-    />
-  );
-}
-
-export function CashBookPage() {
-  return (
-    <ModulePlaceholder
-      title="Cash Book"
-      description="Informal cash ledger (never posts to the journal)."
-      icon={Banknote}
-      phase={ACC_PHASE}
-      legacyRefs={['Balance = opening + all-time net, per location (BR-CASH-02/03).']}
-    />
-  );
-}
+// Chart of Accounts / Journal / General Ledger / Trial Balance / P&L / Balance Sheet / Payables /
+// Cash Book are implemented (Phase 7) in their own modules — see chart-of-accounts-page.tsx,
+// journal-list-page.tsx, journal-detail-page.tsx, general-ledger-page.tsx, trial-balance-page.tsx,
+// profit-loss-page.tsx, balance-sheet-page.tsx, payables-page.tsx, cash-book-page.tsx. Daily
+// Expenses and GST Filing remain placeholders — deliberately out of Phase 7 scope (§33: "do not
+// prematurely build the complete Expenses module"; GST Filing is a later reporting phase). The
+// accounting foundation (Chart of Accounts, postJournalTx, expense-category→account linkage
+// BR-ACC-19) is ready to receive both when their phase lands.
 
 export function ExpensesPage() {
   return (
@@ -102,7 +16,7 @@ export function ExpensesPage() {
       title="Expenses"
       description="Daily expenses by category."
       icon={Coins}
-      phase={ACC_PHASE}
+      phase="Phase 8"
       legacyRefs={['Dr category account / Cr Cash-or-Bank; category snapshot kept (BR-ACC-10 / BR-EXP-02).']}
     />
   );
@@ -114,7 +28,7 @@ export function GstFilingPage() {
       title="GST Filing"
       description="Monthly GSTR-1 style summary and exports."
       icon={FileCheck2}
-      phase="Phase 6"
+      phase="Phase 9"
       legacyRefs={[
         'Without-GST invoices shown separately, excluded from taxable totals (BR-RPT-05).',
         'Not a substitute for a CA review (BR-RPT-07).',

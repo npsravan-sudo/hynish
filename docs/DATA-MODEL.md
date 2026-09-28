@@ -629,3 +629,31 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
 - Indexes: stockLevels (locationId+qty; productId+locationId); stockMovements (locationId+date;
   productId+date; type+date; productId+locationId+date); purchases (deletedAt+date;
   deletedAt+locationId+date; deletedAt+supplierId+date).
+
+## Phase 7 — Accounting, ledger & cash collections (implemented)
+
+- **`accounts/{id}`** — the Chart of Accounts (BR-ACC-06, TD §6.1.1). code, name, nameLower, `type`
+  (ACCOUNT_TYPES), `isSystem`, `expenseCategoryId` (null for the 13 non-CoGS accounts), `normalSide`
+  (derived, stored for read convenience). The 14 default system accounts (ids `acc-cash`, `acc-bank`,
+  `acc-ar`, `acc-inventory`, `acc-gst-input`, `acc-ap`, `acc-gst-output`, `acc-loans`, `acc-capital`,
+  `acc-drawings`, `acc-sales`, `acc-other-income`, `acc-cogs`, `acc-other-expense`) are seeded once
+  by `seedChartOfAccounts`, idempotently (per-doc existence check); custom accounts are created by
+  `saveAccount` with an auto-assigned code (max code of the same type + 10) when left blank.
+- **`journalEntries/{id}`** — unchanged shape from Phase 5/6 (date, locationId, refType, refId,
+  refLabel, lines[], totalPaise, status, void metadata, audit) plus a new derived
+  **`accountIds: string[]`** — the distinct set of accountIds referenced by the entry's lines,
+  computed by `postJournalTx` at post time. Enables the General Ledger's per-account query and
+  `deleteAccount`'s "is this account referenced anywhere" safety check without a separate
+  denormalized index collection.
+- **`cashEntries/{id}`** — Cash Book (BR-CASH-01..04, TD §6.3): date, locationId, `type` ('in'|'out'),
+  category (CASH_IN_CATEGORIES/CASH_OUT_CATEGORIES), amountPaise, mode, reference, notes,
+  `source: {type: 'payment'|'payroll'|'staff_payment'|'manual', id: string|null}`, audit. A
+  deliberately separate, informal ledger — it never posts to `journalEntries` (BR-CASH-02).
+- No new financial-statement collections: Trial Balance, P&L, Balance Sheet, General Ledger and
+  Receivables/Payables are all computed live from `journalEntries` (+ `invoices`/`purchases` for
+  the Receivables/Payables age views) — nothing is cached, mirroring the source's own
+  "recomputed from the full array" behavior (TD §6.1.7/§6.2).
+- Client writes to `accounts`, `journalEntries` and `cashEntries` are denied; every mutation is a
+  Cloud Function.
+- Indexes: journalEntries (status+date; locationId+date; refType+date; accountIds CONTAINS+date
+  ASCENDING — chronological order for General Ledger running balances); cashEntries (locationId+date).

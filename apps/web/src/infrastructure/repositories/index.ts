@@ -11,7 +11,7 @@ import {
   businessSettingsSchema, integrationSettingsSchema,
   type Product, type Customer, type Supplier, type Location, type Member,
   type Invoice, type Quotation, type Payment, type Account, type JournalEntry, type StockMovement,
-  type StockLevel, type Purchase,
+  type StockLevel, type Purchase, type CashEntry,
   type BusinessSettings,
 } from '@hynish/domain';
 import { paths } from '../firestore/paths';
@@ -32,6 +32,7 @@ export interface Repositories {
   stockMovements: ReadRepository<StockMovement>;
   stockLevels: ReadRepository<StockLevel>;
   purchases: ReadRepository<Purchase>;
+  cashEntries: ReadRepository<CashEntry>;
   businessSettings: DocumentReader<BusinessSettings>;
 }
 
@@ -51,6 +52,7 @@ export function makeRepositories(businessId: string): Repositories {
     stockMovements: createReadRepository(paths.stockMovements(businessId), stockMovementSchema),
     stockLevels: createReadRepository(paths.stockLevels(businessId), stockLevelSchema),
     purchases: createReadRepository(paths.purchases(businessId), purchaseSchema),
+    cashEntries: createReadRepository(paths.cashEntries(businessId), cashEntrySchema),
     businessSettings: createDocumentReader(paths.settingsBusiness(businessId), businessSettingsSchema),
   };
 }

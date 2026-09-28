@@ -271,3 +271,16 @@ At no point is legacy data deleted by the migration.
   `journalLinesForPurchase` builder, so migrated books reconcile to legacy `journalLinesForPurchase`.
 - Product `purchasePrice` (the COGS cost basis, BR-COGS-02/BR-PUR-05) migrates on the product; no
   valuation recomputation is performed (§63).
+
+## Phase 7 — Accounting readiness (implemented)
+
+- The Chart of Accounts is seeded once (`seedChartOfAccounts`) before any journal-producing
+  migration runs, so migrated `migration_opening` entries (already supported by
+  `JOURNAL_REF_TYPES`) reference real `Account` documents from the start — no dangling accountIds.
+- Migrated journal entries keep the exact legacy account ids (`acc-cash`, `acc-sales`, …), so
+  historical books reconcile line-for-line against the source without an id-remapping step.
+- Financial statements (Trial Balance/P&L/Balance Sheet) are computed live from `journalEntries`,
+  so migrated history is visible in them immediately with no separate statement-migration step.
+- Cash Book entries migrate as `source: {type: 'manual', id: null}` rows (or with a real source id
+  when traceable) — they never need a corresponding journal entry, since the source never posted
+  them either (BR-CASH-02).

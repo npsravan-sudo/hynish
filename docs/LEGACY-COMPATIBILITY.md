@@ -1222,3 +1222,32 @@ Legacy limitations NOT reproduced: client-side stock writes (KL, unsafe) → ser
 atomic, idempotent Cloud Functions writing movement + level together; balances mutated without a
 reason → every change is a recorded movement; hard purchase delete → soft-delete + stock reversal +
 journal void. No inventory valuation method (FIFO/LIFO/average) was invented (§63).
+
+## Phase 7 — Accounting, ledger & cash parity (implemented)
+
+Preserved: the exact 14-account default Chart of Accounts (ids, names, types) that journal postings
+have referenced since Phase 5; the debit=credit invariant enforced server-side before persistence;
+edit/delete via void-then-repost (never an in-place adjustment); Cash Book as a separate, informal
+ledger that never posts to the journal, with per-location balance = opening + all-time net (no
+combined all-locations total); General Ledger/Trial Balance/P&L/Balance Sheet computed live from
+the full journal, nothing cached; P&L's Income − COGS = Gross Profit, Gross Profit − other expenses
+= Net Profit, defaulting to month-to-date; Trial Balance's Debit/Credit split by sign + normal side
+with a "Balanced ✓" / critical-alert check; Balance Sheet's as-of-date snapshot with Retained
+Earnings as cumulative lifetime income − expense; custom-account creation with duplicate-name
+rejection and auto-assigned code (max code of type + 10, starting step 10).
+
+Legacy limitations NOT reproduced: client-authoritative journal posting → the single
+`postJournalTx` server gateway, App Check + auth + permission + location gated, re-validates the
+balance invariant itself; unrestricted Firestore writes to accounting collections → rules deny all
+client writes to `accounts`/`journalEntries`/`cashEntries`; duplicate accounting pathways → one
+posting gateway reused by every module (§53); unsafe balance manipulation → accounts can only
+change via a posted (balanced) journal line, and `deleteAccount` refuses a system account or one
+still referenced by a journal entry.
+
+**Deliberately not built:** a generic manual-journal-entry UI/callable, and a generic
+`reverseJournal` callable. TD §6.1 states explicitly that "the business user never touches a
+debit/credit screen directly except in the Chart of Accounts itself" — so a free-form journal
+entry screen would be new functionality the source doesn't have, not a preserved behavior. Per §65
+("do not invent … new reversal rules"), reversal is only ever the existing void-then-repost pattern
+already used by Sales/Purchases edit/delete (BR-ACC-05); there is no separate reversal mechanism to
+build. This is documented here rather than left as a silent gap.

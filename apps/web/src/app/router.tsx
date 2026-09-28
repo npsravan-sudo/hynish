@@ -52,6 +52,17 @@ const PurchaseListPage = page(() => import('@/features/purchases/purchase-list-p
 const PurchaseFormPage = page(() => import('@/features/purchases/purchase-form-page'), 'PurchaseFormPage');
 const PurchaseDetailPage = page(() => import('@/features/purchases/purchase-detail-page'), 'PurchaseDetailPage');
 
+// Accounting (Phase 7).
+const ChartOfAccountsPage = page(() => import('@/features/accounting/chart-of-accounts-page'), 'ChartOfAccountsPage');
+const JournalListPage = page(() => import('@/features/accounting/journal-list-page'), 'JournalListPage');
+const JournalDetailPage = page(() => import('@/features/accounting/journal-detail-page'), 'JournalDetailPage');
+const GeneralLedgerPage = page(() => import('@/features/accounting/general-ledger-page'), 'GeneralLedgerPage');
+const TrialBalancePage = page(() => import('@/features/accounting/trial-balance-page'), 'TrialBalancePage');
+const ProfitLossPage = page(() => import('@/features/accounting/profit-loss-page'), 'ProfitLossPage');
+const BalanceSheetPage = page(() => import('@/features/accounting/balance-sheet-page'), 'BalanceSheetPage');
+const PayablesPage = page(() => import('@/features/accounting/payables-page'), 'PayablesPage');
+const CashBookPage = page(() => import('@/features/accounting/cash-book-page'), 'CashBookPage');
+
 const sales = () => import('@/features/sales/sales-pages');
 const inv = () => import('@/features/inventory/inventory-pages');
 const acc = () => import('@/features/accounting/accounting-pages');
@@ -137,13 +148,15 @@ const shellChildren: RouteObject[] = [
     path: 'accounting',
     children: [
       { index: true, element: <Navigate to="/accounting/chart-of-accounts" replace /> },
-      { path: 'chart-of-accounts', element: guarded(page(acc, 'ChartOfAccountsPage'), 'accounting.view') },
-      { path: 'journal', element: guarded(page(acc, 'JournalPage'), 'accounting.view') },
-      { path: 'general-ledger', element: guarded(page(acc, 'GeneralLedgerPage'), 'accounting.view') },
-      { path: 'trial-balance', element: guarded(page(acc, 'TrialBalancePage'), 'accounting.view') },
-      { path: 'profit-loss', element: guarded(page(acc, 'ProfitLossPage'), 'accounting.view') },
-      { path: 'balance-sheet', element: guarded(page(acc, 'BalanceSheetPage'), 'accounting.view') },
-      { path: 'cash-book', element: guarded(page(acc, 'CashBookPage'), 'cashbook.view') },
+      { path: 'chart-of-accounts', element: guarded(ChartOfAccountsPage, 'accounting.view') },
+      { path: 'journal', element: guarded(JournalListPage, 'accounting.view') },
+      { path: 'journal/:id', element: guarded(JournalDetailPage, 'accounting.view') },
+      { path: 'general-ledger', element: guarded(GeneralLedgerPage, 'accounting.view') },
+      { path: 'trial-balance', element: guarded(TrialBalancePage, 'accounting.view') },
+      { path: 'profit-loss', element: guarded(ProfitLossPage, 'accounting.view') },
+      { path: 'balance-sheet', element: guarded(BalanceSheetPage, 'accounting.view') },
+      { path: 'payables', element: guarded(PayablesPage, 'purchases.view') },
+      { path: 'cash-book', element: guarded(CashBookPage, 'cashbook.view') },
       { path: 'expenses', element: guarded(page(acc, 'ExpensesPage'), 'expenses.view') },
       { path: 'gst', element: guarded(page(acc, 'GstFilingPage'), 'gst.view') },
     ],
