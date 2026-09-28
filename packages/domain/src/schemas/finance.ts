@@ -101,6 +101,15 @@ export const accountSchema = entity.merge(softDelete).extend({
 });
 export type Account = z.infer<typeof accountSchema>;
 
+/** Custom account creation (BR-ACC-18, TD §6.1.8). Code is optional — server auto-assigns
+ * (max existing code of the same type + 10) when blank. Only non-system accounts are created here. */
+export const createAccountSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  type: z.enum(ACCOUNT_TYPES),
+  code: z.number().int().positive().nullable().default(null),
+});
+export type CreateAccount = z.infer<typeof createAccountSchema>;
+
 export const journalLineSchema = z
   .object({
     accountId: z.string().min(1),
@@ -117,6 +126,9 @@ export const journalEntrySchema = z.object({
   refId: z.string(),
   refLabel: z.string(),
   lines: z.array(journalLineSchema).min(1),
+  /** Distinct accountIds referenced by `lines`, derived at post time (§35/§47/§49) — enables
+   * `array-contains` queries for per-account General Ledger reads and account-usage checks. */
+  accountIds: z.array(z.string()).default([]),
   totalPaise: nonNegPaise,
   status: z.enum(['posted', 'voided']),
   voidedAt: epochMs.nullable(),

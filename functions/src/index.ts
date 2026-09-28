@@ -30,3 +30,12 @@ export { recordStockAdjustment } from './inventory/adjustments.js';
 export { transferStock } from './inventory/transfers.js';
 export { finalizeStockCount } from './inventory/counts.js';
 export { postOpeningStock } from './inventory/opening.js';
+
+// Accounting (Phase 7) — Chart of Accounts management + Cash Book. The posting gateway itself
+// (postJournalTx) has no client-facing callable: the source never exposes an arbitrary
+// debit/credit screen (TD §6.1), so all journal posting stays internal to the sales/purchases/
+// payments modules above, which already call it inside their own atomic transactions.
+export { seedChartOfAccounts } from './accounting/seed-accounts.js';
+export { saveAccount } from './accounting/save-account.js';
+export { deleteAccount } from './accounting/delete-account.js';
+export { logCashEntry } from './accounting/cash-book.js';

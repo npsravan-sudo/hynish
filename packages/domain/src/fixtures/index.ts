@@ -120,6 +120,7 @@ export function journalEntryFixture(over: Partial<JournalEntry> = {}): JournalEn
       { accountId: 'acc-sales', debitPaise: 0, creditPaise: 90000 },
       { accountId: 'acc-gst-output', debitPaise: 0, creditPaise: 4500 },
     ],
+    accountIds: ['acc-cash', 'acc-sales', 'acc-gst-output'],
     totalPaise: 94500, status: 'posted', voidedAt: null, voidedBy: null, voidReason: null,
     createdAt: 1_700_000_000_000, createdBy: 'user-owner', schemaVersion: 1,
     ...over,

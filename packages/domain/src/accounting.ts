@@ -68,6 +68,15 @@ export function normalSide(type: AccountType): 'debit' | 'credit' {
   return type === 'asset' || type === 'expense' ? 'debit' : 'credit';
 }
 
+/**
+ * Account balance from summed debit/credit (BR-ACC-06/07): debit-normal (asset, expense) =
+ * Σdr − Σcr; credit-normal (liability, equity, income) = Σcr − Σdr. Pure — the caller sums the
+ * (non-voided) journal lines for the account; nothing is cached (TD §6.1.7, recomputed live).
+ */
+export function accountBalance(type: AccountType, sumDebitPaise: number, sumCreditPaise: number): number {
+  return normalSide(type) === 'debit' ? sumDebitPaise - sumCreditPaise : sumCreditPaise - sumDebitPaise;
+}
+
 export interface JournalLineInput {
   accountId: string;
   debitPaise: number;
@@ -139,4 +148,47 @@ export interface PostJournalRequest {
 export interface AccountingService {
   postJournal(request: PostJournalRequest): Promise<{ journalEntryId: string }>;
   reverseJournalForRef(businessId: string, refType: JournalRefType, refId: string): Promise<void>;
+}
+
+// ---- Reconciliation / consistency checks (§49) — detection only, never auto-repaired ------
+export interface ReconciliationEntryInput {
+  id: string;
+  status: 'posted' | 'voided';
+  refType: string;
+  refId: string;
+  lines: readonly JournalLineInput[];
+}
+
+/** Entries whose (non-pruned) lines fail the balance invariant — should be structurally unreachable
+ *  since postJournal refuses them, so a hit here is a real data-integrity alert (TD §6.2). */
+export function findUnbalancedEntries(entries: readonly ReconciliationEntryInput[]): string[] {
+  return entries
+    .filter((e) => e.status === 'posted' && !validateJournal(e.lines).ok)
+    .map((e) => e.id);
+}
+
+/** More than one POSTED entry for the same (refType, refId) — edit/delete must void before re-posting
+ *  (BR-ACC-05), so two posted entries for one ref means a posting bypassed the void step. */
+export function findDuplicatePostedRefs(entries: readonly ReconciliationEntryInput[]): string[] {
+  const counts = new Map<string, number>();
+  for (const e of entries) {
+    if (e.status !== 'posted') continue;
+    const key = `${e.refType}:${e.refId}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].filter(([, n]) => n > 1).map(([key]) => key);
+}
+
+/** Lines referencing an accountId outside the business's known Chart of Accounts (orphan reference). */
+export function findOrphanAccountRefs(
+  entries: readonly ReconciliationEntryInput[],
+  knownAccountIds: ReadonlySet<string>,
+): { entryId: string; accountId: string }[] {
+  const out: { entryId: string; accountId: string }[] = [];
+  for (const e of entries) {
+    for (const l of e.lines) {
+      if (!knownAccountIds.has(l.accountId)) out.push({ entryId: e.id, accountId: l.accountId });
+    }
+  }
+  return out;
 }

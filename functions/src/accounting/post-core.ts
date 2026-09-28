@@ -42,6 +42,7 @@ export function postJournalTx(tx: Transaction, db: Firestore, input: PostJournal
   }
 
   const ref = db.collection(`businesses/${input.businessId}/journalEntries`).doc();
+  const accountIds = [...new Set(pruned.map((l) => l.accountId))];
   tx.set(ref, {
     id: ref.id,
     businessId: input.businessId,
@@ -51,6 +52,7 @@ export function postJournalTx(tx: Transaction, db: Firestore, input: PostJournal
     refId: input.refId,
     refLabel: input.refLabel,
     lines: pruned,
+    accountIds,
     totalPaise: v.totalDebitPaise,
     status: 'posted',
     voidedAt: null,
