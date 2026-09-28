@@ -42,6 +42,20 @@ export function journalLinesForInvoiceCogs(totalCogsPaise: number): JournalLineI
   ];
 }
 
+/**
+ * Purchase journal (`purchase`, BR-PUR-04): Dr Inventory (total), Cr Cash (paid now), Cr Accounts
+ * Payable (remainder). Purchases carry NO GST in the source (BR-PUR-08 / OQ-06) — `acc-gst-input`
+ * is never posted here. At-billing cash books to acc-cash (mirrors the invoice at-billing rule).
+ */
+export function journalLinesForPurchase(totalPaise: number, atBillingPaidPaise: number): JournalLineInput[] {
+  const paidNow = Math.max(0, Math.min(atBillingPaidPaise, totalPaise));
+  const payable = totalPaise - paidNow;
+  const lines: JournalLineInput[] = [{ accountId: 'acc-inventory', debitPaise: totalPaise, creditPaise: 0 }];
+  if (paidNow > 0) lines.push({ accountId: 'acc-cash', debitPaise: 0, creditPaise: paidNow });
+  if (payable > 0) lines.push({ accountId: 'acc-ap', debitPaise: 0, creditPaise: payable });
+  return lines;
+}
+
 /** Customer payment (`payment_in`, BR-PAY-03): Dr Cash-or-Bank(mode) / Cr Accounts Receivable. */
 export function journalLinesForPaymentIn(amountPaise: number, mode: string): JournalLineInput[] {
   return [

@@ -23,6 +23,10 @@ export { deleteInvoice } from './sales/delete-invoice.js';
 export { recordPayment } from './sales/record-payment.js';
 export { saveQuotation } from './sales/quotations.js';
 
-// Boundary note (§60): the remaining server-authoritative operations — recordStockMovement,
-// postPurchase — land in their module phases. Sales establishes the postJournal gateway
-// (accounting/post-core) and the invoice/payment stock-integration boundary for Phase 6.
+// Purchases & Inventory (Phase 6) — server-authoritative, atomic, idempotent stock + purchase ops.
+export { finalizePurchase } from './purchases/finalize-purchase.js';
+export { deletePurchase } from './purchases/delete-purchase.js';
+export { recordStockAdjustment } from './inventory/adjustments.js';
+export { transferStock } from './inventory/transfers.js';
+export { finalizeStockCount } from './inventory/counts.js';
+export { postOpeningStock } from './inventory/opening.js';

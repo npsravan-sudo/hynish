@@ -34,6 +34,31 @@ export const purchaseSchema = entity.merge(softDelete).extend({
 });
 export type Purchase = z.infer<typeof purchaseSchema>;
 
+/**
+ * Draft purchase the client submits (BR-PUR-01..07). Purchases carry NO GST (BR-PUR-08) and are NOT
+ * numbered — they reference the supplier's own bill number. The server computes line amounts and the
+ * total (Σ qty×rate), the stock-in movements and the payable state; client money is never trusted.
+ */
+export const draftPurchaseLineSchema = z.object({
+  productId: z.string().min(1),
+  variantId: z.string().min(1),
+  enteredUnit: z.string(),
+  enteredQty: qty,
+  ratePaise: nonNegPaise, // per entered unit
+});
+export const createPurchaseSchema = z.object({
+  date: businessDate,
+  locationId: z.string().min(1),
+  supplierId: z.string().min(1),
+  supplierBillNo: z.string().default(''),
+  lines: z.array(draftPurchaseLineSchema).min(1).max(500),
+  initialPaidPaise: nonNegPaise.default(0),
+  dueDate: businessDate.nullable().optional(),
+  notes: z.string().default(''),
+  confirmations: z.array(z.enum(['STOCK_SHORTAGE'])).default([]),
+});
+export type CreatePurchase = z.infer<typeof createPurchaseSchema>;
+
 export const paymentSchema = entity.merge(softDelete).extend({
   direction: z.enum(['in', 'out']),
   targetType: z.enum(['invoice', 'purchase']),

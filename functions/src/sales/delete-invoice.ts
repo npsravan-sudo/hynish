@@ -13,6 +13,7 @@ import { assertPermission, assertLocationAccess } from '../auth/authorize.js';
 import { appError } from '../utils/errors.js';
 import { updateAudit, logActivity } from '../masterdata/common.js';
 import { readPostedJournalsForRef, voidEntries } from '../accounting/post-core.js';
+import { applyMovementTx, readLevelTx } from '../inventory/stock-core.js';
 import { readIdempotentResult, writeIdempotentResult } from '../utils/idempotency.js';
 import { deleteInvoiceRequest } from '../schemas/sales.js';
 
@@ -51,8 +52,27 @@ export const deleteInvoice = defineCallable(deleteInvoiceRequest, async (input, 
       : null;
     if (sourceRef) await tx.get(sourceRef);
 
-    // WRITE: void journals, revert source, soft-delete the invoice.
+    // Stock: read current levels for the lines that deducted stock (skip DN-sourced lines).
+    const invLines: { productId: string; variantId: string; baseQty: number; skipStockDeduction?: boolean }[] = inv.lines ?? [];
+    const levels = new Map<string, number>();
+    for (const l of invLines) {
+      if (l.skipStockDeduction) continue;
+      const key = `${l.productId}_${l.variantId}`;
+      if (!levels.has(key)) levels.set(key, await readLevelTx(tx, db, b, l.productId, l.variantId, inv.locationId));
+    }
+
+    // WRITE: void journals, revert source, restore stock, soft-delete the invoice.
     voidEntries(tx, refs, actor.uid, 'delete');
+    for (const l of invLines) {
+      if (l.skipStockDeduction) continue;
+      const key = `${l.productId}_${l.variantId}`;
+      const res = applyMovementTx(tx, db, {
+        businessId: b, date: inv.date, productId: l.productId, variantId: l.variantId,
+        locationId: inv.locationId, type: 'sale_reversal', qtyChange: l.baseQty,
+        refType: 'invoice', refId: input.id, note: 'Invoice deleted', actorUid: actor.uid,
+      }, levels.get(key)!);
+      levels.set(key, res.qtyAfter);
+    }
     if (sourceRef && source) {
       tx.set(sourceRef, source.type === 'quotation'
         ? { status: 'open', convertedInvoiceId: null, ...updateAudit(actor.uid) }

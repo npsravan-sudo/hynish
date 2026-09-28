@@ -8,10 +8,12 @@
  * invoice + COGS journals are voided and re-posted; the number and the amount already received are
  * preserved (BR-INV-12); later payments keep their own entries (BR-ACC-09).
  *
- * Phase-6 boundary (§15, §29): physical stock movement (stockLevels/stockMovements) is NOT written
- * here yet — each line already carries baseQty, unitCostPaise and skipStockDeduction so the Inventory
- * phase can add the movement writes inside this same transaction. The COGS *accounting* entry is
- * posted now (value = purchasePrice snapshot, BR-COGS-01/02).
+ * Sales → Inventory (Phase 6, §33, BR-INV-07/11): each non-`skipStockDeduction` line writes a `sale`
+ * movement (base units) at the invoice location in this same transaction. Editing is undo-then-reapply
+ * — old lines are reversed (`sale_reversal`, added back before the shortage check, BR-INV-05) then the
+ * new lines are deducted. A shortage is a warning (STOCK_SHORTAGE confirmation), and going negative on
+ * a confirmed sale is the source-supported override (BR-STK-06). The COGS accounting entry
+ * (Dr COGS / Cr Inventory) uses the purchasePrice snapshot (BR-COGS-01/02).
  */
 import {
   taxTypeFor,
@@ -30,6 +32,7 @@ import { appError } from '../utils/errors.js';
 import { createAudit, updateAudit, logActivity } from '../masterdata/common.js';
 import { reserveNumberInTx } from '../numbering/reserve-core.js';
 import { postJournalTx, readPostedJournalsForRef, voidEntries } from '../accounting/post-core.js';
+import { applyMovementTx, readLevelTx } from '../inventory/stock-core.js';
 import { readIdempotentResult, writeIdempotentResult } from '../utils/idempotency.js';
 import { buildLines, type DraftLine, type ProductData } from './build-lines.js';
 import { finalizeInvoiceRequest } from '../schemas/sales.js';
@@ -113,6 +116,18 @@ export const finalizeInvoice = defineCallable(finalizeInvoiceRequest, async (inp
         ]
       : [];
 
+    // Stock: current levels for every cell touched by the new lines and (on edit) the old lines,
+    // all at this invoice's location (BR-INV-09/10 lock the location). Read before any write.
+    const oldLines: { productId: string; variantId: string; baseQty: number; skipStockDeduction?: boolean }[] =
+      isEdit ? (existingSnap!.data()!.lines ?? []) : [];
+    const stockCells = new Map<string, number>();
+    async function ensureCell(productId: string, variantId: string): Promise<void> {
+      const key = `${productId}_${variantId}`;
+      if (!stockCells.has(key)) stockCells.set(key, await readLevelTx(tx, db, b, productId, variantId, input.locationId));
+    }
+    for (const l of input.lines) await ensureCell(l.productId, l.variantId);
+    for (const l of oldLines) if (!l.skipStockDeduction) await ensureCell(l.productId, l.variantId);
+
     // ---- COMPUTE -------------------------------------------------------------------
     const gstApplicable = input.gstApplicable; // BR-INV-02: default handled client-side (DEF-016)
     const taxType = taxTypeFor(sellerStateCode, customerStateCode);
@@ -124,6 +139,23 @@ export const finalizeInvoice = defineCallable(finalizeInvoiceRequest, async (inp
     const paidPaise = isEdit ? Math.trunc((existingSnap!.data()!.paidPaise as number) ?? 0) : initialPaidPaise;
     const outstandingPaise = outstandingOf(built.grandTotalPaise, paidPaise);
     const paymentStatus = derivePaymentStatus(built.grandTotalPaise, paidPaise);
+
+    // Stock shortage check (BR-INV-05): reverse the OLD lines back first, then test the new lines.
+    // A shortage is a non-blocking warning the client re-submits with STOCK_SHORTAGE to confirm.
+    const sim = new Map(stockCells);
+    for (const l of oldLines) if (!l.skipStockDeduction) sim.set(`${l.productId}_${l.variantId}`, (sim.get(`${l.productId}_${l.variantId}`) ?? 0) + l.baseQty);
+    let shortage = false;
+    for (const l of built.lines) {
+      if (l.skipStockDeduction) continue;
+      const key = `${l.productId}_${l.variantId}`;
+      const next = (sim.get(key) ?? 0) - l.baseQty;
+      sim.set(key, next);
+      if (next < 0) shortage = true;
+    }
+    const stockConfirmed = input.confirmations.includes('STOCK_SHORTAGE');
+    if (shortage && !stockConfirmed) {
+      throw appError('STOCK_SHORTAGE', 'One or more items do not have enough stock at this location.');
+    }
 
     // ---- WRITE PHASE ---------------------------------------------------------------
     let number: string;
@@ -215,6 +247,33 @@ export const finalizeInvoice = defineCallable(finalizeInvoiceRequest, async (inp
       lines: journalLinesForInvoiceCogs(built.cogsTotalPaise),
       actorUid: actor.uid,
     });
+
+    // Stock movements (BR-INV-07/11): reverse old lines, then deduct the new ones. Same transaction.
+    const run = new Map(stockCells);
+    const allowNegativeSale = stockConfirmed; // the shortage confirmation IS the sale's negative override (BR-STK-06)
+    if (isEdit) {
+      for (const l of oldLines) {
+        if (l.skipStockDeduction) continue;
+        const key = `${l.productId}_${l.variantId}`;
+        const res = applyMovementTx(tx, db, {
+          businessId: b, date: input.date, productId: l.productId, variantId: l.variantId,
+          locationId: input.locationId, type: 'sale_reversal', qtyChange: l.baseQty,
+          refType: 'invoice', refId: invoiceRef.id, note: 'Invoice edit — reverse', actorUid: actor.uid,
+        }, run.get(key)!);
+        run.set(key, res.qtyAfter);
+      }
+    }
+    for (const l of built.lines) {
+      if (l.skipStockDeduction) continue;
+      const key = `${l.productId}_${l.variantId}`;
+      const res = applyMovementTx(tx, db, {
+        businessId: b, date: input.date, productId: l.productId, variantId: l.variantId,
+        locationId: input.locationId, type: 'sale', qtyChange: -l.baseQty,
+        refType: 'invoice', refId: invoiceRef.id, unitCostPaise: l.unitCostPaise, actorUid: actor.uid,
+        allowNegative: allowNegativeSale,
+      }, run.get(key)!);
+      run.set(key, res.qtyAfter);
+    }
 
     // Flip the source document on create (BR-INV-15).
     if (sourceRef && input.source) {

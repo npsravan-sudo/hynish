@@ -19,6 +19,8 @@ export type AppErrorCode =
   // Confirmation-required (warnings, not hard blocks): the client re-submits with an acknowledgement.
   | 'PAST_MONTH_EDIT'
   | 'OVER_PAYMENT'
+  | 'STOCK_SHORTAGE'
+  | 'NEGATIVE_STOCK'
   | 'INTERNAL';
 
 const CODE_TO_HTTPS: Record<AppErrorCode, FunctionsErrorCode> = {
@@ -35,6 +37,8 @@ const CODE_TO_HTTPS: Record<AppErrorCode, FunctionsErrorCode> = {
   CONFLICT: 'aborted',
   PAST_MONTH_EDIT: 'failed-precondition',
   OVER_PAYMENT: 'failed-precondition',
+  STOCK_SHORTAGE: 'failed-precondition',
+  NEGATIVE_STOCK: 'failed-precondition',
   INTERNAL: 'internal',
 };
 
