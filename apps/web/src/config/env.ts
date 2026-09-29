@@ -58,7 +58,7 @@ export function getFirebaseConfig(): FirebaseConfig {
 export const appConfig = {
   appName: 'Hynish ERP',
   fullName: 'Hynish Clothing — Wholesale Ledger',
-  version: '0.1.0',
+  version: '1.0.0',
   appCheckSiteKey: parsed.VITE_APPCHECK_SITE_KEY ?? '',
   appCheckDebugToken: parsed.VITE_APPCHECK_DEBUG_TOKEN ?? '',
   useEmulators: parsed.VITE_USE_FIREBASE_EMULATORS === 'true',

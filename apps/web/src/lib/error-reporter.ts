@@ -29,7 +29,7 @@ const noopImpl: ErrorReporterImpl = {
     if (import.meta.env.DEV) console.error('[ErrorReporter]', error, extra);
   },
   captureMessage(message, level = 'info') {
-    if (import.meta.env.DEV) console.log(`[ErrorReporter:${level}]`, message);
+    if (import.meta.env.DEV) console.warn(`[ErrorReporter:${level}]`, message);
   },
   setUser(_uid) {},
   setBusinessContext(_businessId) {},

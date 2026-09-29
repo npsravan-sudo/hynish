@@ -56,3 +56,8 @@ export { saveDebitNote } from './purchases/debit-notes.js';
 // Restore is not yet a callable — destructive bulk-restore requires a dedicated migration path
 // (OQ-29). The supported flow is client-side export + import via saveBusinessSettings.
 export { saveBusinessSettings, saveIntegrationSettings, createBackupMetadata } from './settings/save-settings.js';
+
+// Migration (Phase 12) — Controlled legacy data migration with dry-run mode, journal-balance
+// validation, numbering counter seeding, and migration stamp to prevent accidental re-run.
+// Requires: owner role + step-up reauth + App Check.
+export { runMigration } from './migration/run-migration.js';

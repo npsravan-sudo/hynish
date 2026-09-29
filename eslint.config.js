@@ -14,6 +14,7 @@ export default tseslint.config(
       '**/*.config.js',
       '**/*.config.ts',
       'scratch-*.mjs', // local verification scripts, never committed
+      'apps/web/scripts/**', // Node.js build tool scripts (icon generation, etc.)
       'functions/lib/**',
       'apps/web/src/components/ui/**', // shadcn-style primitives: allow their idioms
     ],

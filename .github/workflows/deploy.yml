@@ -1,0 +1,123 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      confirm_production:
+        description: 'Type DEPLOY to confirm production deployment'
+        required: false
+        default: ''
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  guard:
+    name: Deployment Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require confirmation for production
+        if: github.event.inputs.environment == 'production'
+        run: |
+          if [ "${{ github.event.inputs.confirm_production }}" != "DEPLOY" ]; then
+            echo "Production deployment requires confirm_production='DEPLOY'"
+            exit 1
+          fi
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: guard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build web app
+        run: npm run build --workspace apps/web
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_APPCHECK_SITE_KEY: ${{ secrets.VITE_APPCHECK_SITE_KEY }}
+          VITE_BUSINESS_ID: ${{ secrets.VITE_BUSINESS_ID }}
+      - name: Build Functions
+        run: npm run build --workspace functions
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.event.inputs.environment }}
+          path: |
+            apps/web/dist/
+            functions/lib/
+          retention-days: 7
+
+  deploy-functions:
+    name: Deploy Cloud Functions
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.event.inputs.environment }}
+      - name: Deploy Firestore rules
+        run: npx firebase-tools deploy --only firestore:rules --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_CI_TOKEN }} --non-interactive
+      - name: Deploy Firestore indexes
+        run: npx firebase-tools deploy --only firestore:indexes --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_CI_TOKEN }} --non-interactive
+      - name: Deploy Storage rules
+        run: npx firebase-tools deploy --only storage --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_CI_TOKEN }} --non-interactive
+      - name: Deploy Functions
+        run: npx firebase-tools deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_CI_TOKEN }} --non-interactive
+
+  deploy-hosting:
+    name: Deploy Hosting
+    runs-on: ubuntu-latest
+    needs: deploy-functions
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.event.inputs.environment }}
+          path: apps/web/dist
+      - name: Deploy Hosting
+        run: npx firebase-tools deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_CI_TOKEN }} --non-interactive
+      - name: Post-deployment smoke check
+        run: |
+          echo "Deployment complete. Manual smoke test checklist:"
+          echo "  [ ] Login works"
+          echo "  [ ] Dashboard loads"
+          echo "  [ ] New Invoice form opens"
+          echo "  [ ] Settings accessible for admin"
+          echo "  [ ] PWA manifest served at /manifest.webmanifest"
+          echo "  [ ] Service worker registered at /sw.js"
