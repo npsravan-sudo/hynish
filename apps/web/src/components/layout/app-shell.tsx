@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { PageSkeleton } from '@/components/feedback/skeletons';
+import { NetworkStatusIndicator } from '@/components/pwa/network-status-indicator';
+import { FeatureErrorBoundary } from '@/app/feature-error-boundary';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { MobileDrawer } from './mobile-drawer';
@@ -12,6 +14,9 @@ import { LocationSelector } from './location-selector';
  * Application shell (Phase 1 §9). Reusable across every screen: desktop sidebar + topbar,
  * mobile drawer + bottom navigation, and the command palette. The routed page renders in
  * <Outlet />. A skip link and a labelled <main> support keyboard and screen-reader users.
+ *
+ * Phase 11: adds NetworkStatusIndicator and wraps the page outlet in FeatureErrorBoundary
+ * so a crash in one page doesn't destroy the whole shell.
  */
 export function AppShell() {
   return (
@@ -28,6 +33,9 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
 
+        {/* Offline banner — appears below the topbar, non-blocking */}
+        <NetworkStatusIndicator />
+
         {/* Location selector on very small screens sits below the topbar for reachability. */}
         <div className="border-b border-border bg-background px-3 py-2 sm:hidden">
           <LocationSelector className="w-full" />
@@ -39,9 +47,11 @@ export function AppShell() {
           className="flex-1 px-4 py-5 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:pb-8"
         >
           <div className="mx-auto w-full max-w-[1600px]">
-            <Suspense fallback={<PageSkeleton />}>
-              <Outlet />
-            </Suspense>
+            <FeatureErrorBoundary name="Page">
+              <Suspense fallback={<PageSkeleton />}>
+                <Outlet />
+              </Suspense>
+            </FeatureErrorBoundary>
           </div>
         </main>
       </div>

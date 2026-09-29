@@ -26,7 +26,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import { PageSkeleton } from '@/components/feedback/skeletons';
 import { ErrorState } from '@/components/feedback/error-state';
@@ -538,9 +537,12 @@ function BackupSection({
         businessId,
         businessName: settings?.businessName ?? '',
         settings: { business: settings, integrations: null },
-        members, locations, products, customers, suppliers,
-        invoices, purchases, quotations, deliveryNotes, creditNotes, debitNotes,
-        expenses, cashEntries, stockMovements, journalEntries, accounts,
+        members: members.items, locations: locations.items, products: products.items,
+        customers: customers.items, suppliers: suppliers.items,
+        invoices: invoices.items, purchases: purchases.items, quotations: quotations.items,
+        deliveryNotes: deliveryNotes.items, creditNotes: creditNotes.items, debitNotes: debitNotes.items,
+        expenses: expenses.items, cashEntries: cashEntries.items, stockMovements: stockMovements.items,
+        journalEntries: journalEntries.items, accounts: accounts.items,
       };
 
       const json = JSON.stringify(envelope, null, 2);
@@ -553,12 +555,12 @@ function BackupSection({
       URL.revokeObjectURL(url);
 
       const entityCounts: Record<string, number> = {
-        members: members.length, locations: locations.length, products: products.length,
-        customers: customers.length, suppliers: suppliers.length, invoices: invoices.length,
-        purchases: purchases.length, quotations: quotations.length, deliveryNotes: deliveryNotes.length,
-        creditNotes: creditNotes.length, debitNotes: debitNotes.length, expenses: expenses.length,
-        cashEntries: cashEntries.length, stockMovements: stockMovements.length,
-        journalEntries: journalEntries.length, accounts: accounts.length,
+        members: members.items.length, locations: locations.items.length, products: products.items.length,
+        customers: customers.items.length, suppliers: suppliers.items.length, invoices: invoices.items.length,
+        purchases: purchases.items.length, quotations: quotations.items.length, deliveryNotes: deliveryNotes.items.length,
+        creditNotes: creditNotes.items.length, debitNotes: debitNotes.items.length, expenses: expenses.items.length,
+        cashEntries: cashEntries.items.length, stockMovements: stockMovements.items.length,
+        journalEntries: journalEntries.items.length, accounts: accounts.items.length,
       };
       await service.backup.recordMetadata({
         sizeEstimateBytes: json.length,

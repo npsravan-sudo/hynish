@@ -30,12 +30,12 @@ function formatAt(ts: number): string {
 }
 
 function actionBadge(action: string) {
-  const [type, verb] = action.split('.');
+  const [, verb] = action.split('.');
   const color =
-    verb === 'delete' ? 'destructive' :
+    verb === 'delete' ? 'danger' :
     verb === 'create' || verb === 'login' ? 'default' :
     'secondary';
-  return <Badge variant={color as 'destructive' | 'default' | 'secondary' | 'outline'} className="font-mono text-xs">{action}</Badge>;
+  return <Badge variant={color as 'danger' | 'default' | 'secondary' | 'outline'} className="font-mono text-xs">{action}</Badge>;
 }
 
 export function ActivityPage() {

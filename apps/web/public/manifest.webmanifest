@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Hynish Clothing — Wholesale Ledger",
+  "short_name": "Hynish ERP",
+  "description": "Billing, inventory, GST and accounting for Hynish Clothing.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#0F1626",
+  "theme_color": "#172033",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "New Bill", "url": "/sales/new?source=shortcut" },
+    { "name": "Stock", "url": "/inventory/stock?source=shortcut" },
+    { "name": "Dues", "url": "/sales/dues?source=shortcut" }
+  ]
+}
