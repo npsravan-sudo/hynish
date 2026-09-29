@@ -33,4 +33,5 @@ export const paths = {
   staff: (b: string) => `businesses/${b}/staff`,
   staffPayments: (b: string) => `businesses/${b}/staffPayments`,
   activityLog: (b: string) => `businesses/${b}/activityLog`,
+  backups: (b: string) => `businesses/${b}/backups`,
 } as const;

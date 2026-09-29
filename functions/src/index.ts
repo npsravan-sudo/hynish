@@ -50,3 +50,9 @@ export { saveExpense, deleteExpense } from './accounting/expenses.js';
 export { saveDeliveryNote, markDeliveryNoteReturned } from './sales/delivery-notes.js';
 export { saveCreditNote } from './sales/credit-notes.js';
 export { saveDebitNote } from './purchases/debit-notes.js';
+
+// Administration (Phase 10) — Settings, Backup metadata. All settings writes are server-only;
+// clients use these callables, never writing settings/* or backups/* directly.
+// Restore is not yet a callable — destructive bulk-restore requires a dedicated migration path
+// (OQ-29). The supported flow is client-side export + import via saveBusinessSettings.
+export { saveBusinessSettings, saveIntegrationSettings, createBackupMetadata } from './settings/save-settings.js';

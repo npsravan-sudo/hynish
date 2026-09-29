@@ -5,3 +5,4 @@ export * from './sales.js';
 export * from './finance.js';
 export * from './inventory.js';
 export * from './people.js';
+export * from './backup.js';

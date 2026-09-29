@@ -10,6 +10,7 @@ import { createSalesService, type SalesService } from '@/services/sales.service'
 import { createInventoryService, type InventoryService } from '@/services/inventory.service';
 import { createPurchasesService, type PurchasesService } from '@/services/purchases.service';
 import { createAccountingService, type AccountingService } from '@/services/accounting.service';
+import { createAdminService, type AdminService } from '@/services/admin.service';
 
 export function useRepositories(): Repositories {
   const businessId = useAuthStore((s) => s.businessId);
@@ -39,4 +40,9 @@ export function usePurchasesService(): PurchasesService {
 export function useAccountingService(): AccountingService {
   const businessId = useAuthStore((s) => s.businessId);
   return useMemo(() => createAccountingService(businessId), [businessId]);
+}
+
+export function useAdminService(): AdminService {
+  const businessId = useAuthStore((s) => s.businessId);
+  return useMemo(() => createAdminService(businessId), [businessId]);
 }

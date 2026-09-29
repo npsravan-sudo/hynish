@@ -8,12 +8,12 @@ import {
   invoiceSchema, quotationSchema, deliveryNoteSchema, creditNoteSchema, debitNoteSchema,
   purchaseSchema, paymentSchema, accountSchema, journalEntrySchema, stockMovementSchema,
   stockLevelSchema, expenseSchema, expenseCategorySchema, cashEntrySchema, activityLogSchema,
-  businessSettingsSchema, integrationSettingsSchema,
+  businessSettingsSchema, integrationSettingsSchema, backupMetadataSchema,
   type Product, type Customer, type Supplier, type Location, type Member,
   type Invoice, type Quotation, type Payment, type Account, type JournalEntry, type StockMovement,
   type StockLevel, type Purchase, type CashEntry, type DeliveryNote, type CreditNote, type DebitNote,
-  type Expense, type ExpenseCategory,
-  type BusinessSettings,
+  type Expense, type ExpenseCategory, type ActivityLog,
+  type BusinessSettings, type IntegrationSettings, type BackupMetadata,
 } from '@hynish/domain';
 import { paths } from '../firestore/paths';
 import { createReadRepository, type ReadRepository } from './firestore-repository';
@@ -21,6 +21,7 @@ import { createDocumentReader, type DocumentReader } from './document-reader';
 
 export interface Repositories {
   members: ReadRepository<Member>;
+  activityLog: ReadRepository<ActivityLog>;
   locations: ReadRepository<Location>;
   products: ReadRepository<Product>;
   customers: ReadRepository<Customer>;
@@ -40,12 +41,15 @@ export interface Repositories {
   expenses: ReadRepository<Expense>;
   expenseCategories: ReadRepository<ExpenseCategory>;
   businessSettings: DocumentReader<BusinessSettings>;
+  integrationSettings: DocumentReader<IntegrationSettings>;
+  backups: ReadRepository<BackupMetadata>;
 }
 
 /** Build the repositories bound to a business id. Cheap to call; repos are stateless. */
 export function makeRepositories(businessId: string): Repositories {
   return {
     members: createReadRepository(paths.members(businessId), memberSchema),
+    activityLog: createReadRepository(paths.activityLog(businessId), activityLogSchema),
     locations: createReadRepository(paths.locations(businessId), locationSchema),
     products: createReadRepository(paths.products(businessId), productSchema),
     customers: createReadRepository(paths.customers(businessId), customerSchema),
@@ -65,6 +69,8 @@ export function makeRepositories(businessId: string): Repositories {
     expenses: createReadRepository(paths.expenses(businessId), expenseSchema),
     expenseCategories: createReadRepository(paths.expenseCategories(businessId), expenseCategorySchema),
     businessSettings: createDocumentReader(paths.settingsBusiness(businessId), businessSettingsSchema),
+    integrationSettings: createDocumentReader(paths.settingsIntegrations(businessId), integrationSettingsSchema),
+    backups: createReadRepository(paths.backups(businessId), backupMetadataSchema),
   };
 }
 
