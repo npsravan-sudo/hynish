@@ -17,6 +17,7 @@ export * from './numbering.js';
 export * from './accounting.js';
 export * from './posting.js';
 export * from './inventory.js';
+export * from './reports.js';
 
 // Zod schemas & inferred entity types
 export * from './schemas/index.js';

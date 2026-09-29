@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   businessSchema, memberSchema, locationSchema, productSchema, customerSchema, supplierSchema,
   invoiceSchema, paymentSchema, journalEntrySchema, stockMovementSchema, businessSettingsSchema,
+  creditNoteSchema,
 } from '../schemas/index.js';
 import {
   businessFixture, memberFixture, locationFixture, productFixture, customerFixture, supplierFixture,
   invoiceFixture, paymentFixture, journalEntryFixture, stockMovementFixture, settingsFixture,
+  creditNoteFixture,
 } from './index.js';
 
 describe('fixtures validate against their schemas (§57)', () => {
@@ -21,6 +23,7 @@ describe('fixtures validate against their schemas (§57)', () => {
     expect(journalEntrySchema.safeParse(journalEntryFixture()).success).toBe(true);
     expect(stockMovementSchema.safeParse(stockMovementFixture()).success).toBe(true);
     expect(businessSettingsSchema.safeParse(settingsFixture()).success).toBe(true);
+    expect(creditNoteSchema.safeParse(creditNoteFixture()).success).toBe(true);
   });
 
   it('the invoice fixture is internally consistent (a balanced sale)', () => {

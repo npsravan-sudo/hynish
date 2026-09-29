@@ -1,35 +1,29 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CircleDollarSign } from 'lucide-react';
-import { formatINR, outstandingOf, isOutstanding, todayISO, type Invoice } from '@hynish/domain';
+import { formatINR, outstandingOf, isOutstanding, todayISO, duesSummary, type Invoice } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DataList, type Column } from '@/components/data/data-list';
 import { ListToolbar } from '@/components/data/list-toolbar';
 import { SectionCard } from '@/components/premium';
-import { useRepositories } from '@/hooks/use-master-data';
-import { usePagedList } from '@/hooks/use-paged-list';
-import type { ListParams } from '@/infrastructure/repositories/firestore-repository';
+import { useOutstandingInvoiceSource } from './use-receivables';
 import { clientSearch } from '@/features/_shared/master-data';
 
-// Sales-scoped receivables (§44): outstanding invoices only. The full customer statement/ageing
-// report is a later phase. Ordered by date; outstanding computed via the shared domain helper.
-const PARAMS: ListParams = { orderByField: 'date', direction: 'desc', limit: 100, filters: [{ field: 'deletedAt', op: '==', value: null }] };
-
+/** Receivables (BR-DUE-01..04/08, TD §6.7). KPIs: Total Outstanding, Overdue, Due in Next 7 Days,
+ * distinct customers with dues — computed via the shared `duesSummary`, the same one the
+ * Dashboard's Outstanding Dues card uses, so the two numbers never disagree (§60/§61). */
 export function DuesPage() {
   const navigate = useNavigate();
-  const repos = useRepositories();
   const [search, setSearch] = useState('');
-  const { items, loading, error, refresh } = usePagedList(repos.invoices, useMemo(() => PARAMS, []));
+  const { invoices: items, loading, error, refresh } = useOutstandingInvoiceSource();
 
   const outstanding = useMemo(() => items.filter((i) => isOutstanding(i.grandTotalPaise, i.paidPaise)), [items]);
   const filtered = clientSearch(outstanding, search, (i) => [i.number, i.customerSnapshot?.name ?? '']);
 
   const today = todayISO();
-  const totalOutstanding = outstanding.reduce((s, i) => s + outstandingOf(i.grandTotalPaise, i.paidPaise), 0);
-  const overdue = outstanding.filter((i) => i.dueDate && i.dueDate < today);
-  const overdueTotal = overdue.reduce((s, i) => s + outstandingOf(i.grandTotalPaise, i.paidPaise), 0);
+  const summary = useMemo(() => duesSummary(items, (i) => i.grandTotalPaise, (i) => i.paidPaise, (i) => i.customerId, today), [items, today]);
 
   function overdueBadge(i: Invoice) {
     if (!i.dueDate) return <Badge variant="secondary">No due date</Badge>;
@@ -52,10 +46,11 @@ export function DuesPage() {
         description="Receivables from unpaid and partially paid invoices."
         filters={<ListToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search invoice, customer…" />}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SectionCard title="Total outstanding"><p className="num text-2xl font-bold">{formatINR(totalOutstanding)}</p></SectionCard>
-        <SectionCard title="Overdue"><p className="num text-2xl font-bold text-danger">{formatINR(overdueTotal)}</p></SectionCard>
-        <SectionCard title="Invoices with dues"><p className="num text-2xl font-bold">{outstanding.length}</p></SectionCard>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionCard title="Total outstanding"><p className="num text-2xl font-bold">{formatINR(summary.totalOutstandingPaise)}</p></SectionCard>
+        <SectionCard title="Overdue"><p className="num text-2xl font-bold text-danger">{formatINR(summary.overdueTotalPaise)}</p></SectionCard>
+        <SectionCard title="Due in next 7 days"><p className="num text-2xl font-bold text-warning">{formatINR(summary.dueSoonTotalPaise)}</p></SectionCard>
+        <SectionCard title="Customers with dues"><p className="num text-2xl font-bold">{summary.partiesWithDuesCount}</p></SectionCard>
       </div>
       <DataList
         items={filtered}

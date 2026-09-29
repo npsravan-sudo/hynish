@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Receipt, Sparkles } from 'lucide-react';
-import { formatINR, type Expense, type ExpenseCategory } from '@hynish/domain';
+import {
+  formatINR, todayISO, monthKey, bucketByPeriod, expenseKpis, expensesByCategory,
+  type Expense, type ExpenseCategory, type ReportGranularity,
+} from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
+import { SectionCard } from '@/components/premium';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { DataList, type Column } from '@/components/data/data-list';
 import { ListToolbar } from '@/components/data/list-toolbar';
+import { EmptyState } from '@/components/feedback/empty-state';
+import { TrendChart } from '@/components/charts/trend-chart';
 import { toast } from '@/components/ui/sonner';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRepositories, useAccountingService } from '@/hooks/use-master-data';
@@ -15,6 +22,7 @@ import { usePagedList } from '@/hooks/use-paged-list';
 import type { ListParams } from '@/infrastructure/repositories/firestore-repository';
 import { clientSearch } from '@/features/_shared/master-data';
 import { mapCallableError } from '@/lib/errors';
+import { useLedgerAggregate } from './use-ledger-aggregate';
 
 const PARAMS: ListParams = { orderByField: 'date', direction: 'desc', limit: 25, filters: [{ field: 'deletedAt', op: '==', value: null }] };
 
@@ -24,6 +32,7 @@ export function ExpenseListPage() {
   const repos = useRepositories();
   const service = useAccountingService();
   const locations = useAuthStore((s) => s.locations);
+  const currentLocationId = useAuthStore((s) => s.currentLocationId);
   const can = useAuthStore((s) => s.hasPermission);
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<'all' | string>('all');
@@ -31,6 +40,38 @@ export function ExpenseListPage() {
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [granularity, setGranularity] = useState<ReportGranularity>('day');
+
+  // BR-EXP-03: KPIs/trend/category breakdown are scoped to the WORKING location, separate from
+  // the filterable list above (which defaults to all locations, per the note in PHASE-8 docs).
+  const analyticsParams = useMemo(() => ({
+    filters: [{ field: 'deletedAt', op: '==' as const, value: null }, { field: 'locationId', op: '==' as const, value: currentLocationId ?? '' }],
+    orderByField: 'date' as const, limit: 1000,
+  }), [currentLocationId]);
+  const { items: locationExpenses, loading: analyticsLoading } = useLedgerAggregate(repos.expenses, analyticsParams);
+  const today = todayISO();
+  const kpis = useMemo(() => expenseKpis(locationExpenses, today), [locationExpenses, today]);
+  const byCategory = useMemo(() => expensesByCategory(locationExpenses), [locationExpenses]);
+
+  // "Net This Month" = this month's sales − this month's expenses, at the working location
+  // (TD §6.4). Bounded to the current month only, so this stays a cheap, single extra query.
+  const thisMonthKey = monthKey(today);
+  const salesParams = useMemo(() => ({
+    filters: [
+      { field: 'deletedAt', op: '==' as const, value: null },
+      { field: 'locationId', op: '==' as const, value: currentLocationId ?? '' },
+      { field: 'date', op: '>=' as const, value: `${thisMonthKey}-01` },
+    ],
+    orderByField: 'date' as const, limit: 1000,
+  }), [currentLocationId, thisMonthKey]);
+  const { items: monthInvoices, loading: salesLoading } = useLedgerAggregate(repos.invoices, salesParams);
+  const thisMonthSalesPaise = useMemo(() => monthInvoices.reduce((s, i) => s + i.grandTotalPaise, 0), [monthInvoices]);
+  const netThisMonthPaise = thisMonthSalesPaise - kpis.thisMonthPaise;
+  const trendPoints = useMemo(() => {
+    const buckets = bucketByPeriod(locationExpenses, (e) => e.date, granularity, 14, today);
+    return buckets.map((b) => ({ key: b.period.key, label: b.period.label, value: b.items.reduce((s, e) => s + e.amountPaise, 0) }));
+  }, [locationExpenses, granularity, today]);
+  const currentLocationName = locations.find((l) => l.id === currentLocationId)?.name ?? '';
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +152,50 @@ export function ExpenseListPage() {
           />
         }
       />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Today" value={formatINR(kpis.todayPaise)} />
+        <Stat label="Last 7 days" value={formatINR(kpis.last7DaysPaise)} />
+        <Stat label="This month" value={formatINR(kpis.thisMonthPaise)} strong />
+        <Stat
+          label="Net this month"
+          value={(salesLoading ? '…' : formatINR(netThisMonthPaise))}
+          strong
+          className={netThisMonthPaise >= 0 ? 'text-success' : 'text-danger'}
+        />
+      </div>
+
+      <SectionCard
+        title="Spend trend"
+        description={currentLocationName ? `At ${currentLocationName} — last 14 periods.` : 'Last 14 periods.'}
+        action={
+          <Select value={granularity} onValueChange={(v) => setGranularity(v as ReportGranularity)}>
+            <SelectTrigger className="w-32" aria-label="Group by"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">By day</SelectItem>
+              <SelectItem value="week">By week</SelectItem>
+              <SelectItem value="month">By month</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      >
+        <TrendChart data={trendPoints} formatValue={(v) => formatINR(v, { withSymbol: false })} unitLabel="Spend" loading={analyticsLoading} emptyMessage="No expenses in the last 14 periods" />
+      </SectionCard>
+
+      <SectionCard title="By category" description="All-time, at the working location.">
+        {byCategory.length === 0 ? (
+          <EmptyState icon={Receipt} title="No expenses yet" />
+        ) : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {byCategory.map((c) => (
+                <TableRow key={c.categoryId}><TableCell className="font-medium">{c.categoryName}</TableCell><TableCell className="num text-right">{formatINR(c.totalPaise)}</TableCell></TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </SectionCard>
+
       <DataList
         items={filtered}
         getRowId={(e) => e.id}
@@ -137,6 +222,15 @@ export function ExpenseListPage() {
           </Card>
         )}
       />
+    </div>
+  );
+}
+
+function Stat({ label, value, strong, className }: { label: string; value: string; strong?: boolean; className?: string }) {
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`num mt-1 ${strong ? 'text-xl font-bold' : 'text-lg font-semibold'} ${className ?? ''}`}>{value}</p>
     </div>
   );
 }

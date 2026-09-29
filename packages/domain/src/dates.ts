@@ -41,3 +41,11 @@ export function isWithinRange(dateISO: string, from?: string | null, to?: string
   if (to && dateISO > to) return false;
   return true;
 }
+
+/** Add (or subtract, with a negative) whole days to a business date, in UTC to avoid DST drift. */
+export function addDaysISO(dateISO: string, days: number): string {
+  const [y, m, d] = dateISO.split('-').map(Number);
+  const date = new Date(Date.UTC(y!, m! - 1, d!));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}

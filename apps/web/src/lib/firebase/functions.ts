@@ -20,8 +20,12 @@ export function getFirebaseFunctions(): Functions {
   return cached;
 }
 
-/** Typed wrapper around a callable. */
+/**
+ * Typed wrapper around a callable. Resolution of the Functions instance is deferred to the first
+ * invocation (not module load) so importing a service module never requires Firebase to be
+ * configured — only actually calling one of its functions does.
+ */
 export function callable<TInput, TOutput>(name: string) {
-  const fn = httpsCallable<TInput, TOutput>(getFirebaseFunctions(), name);
-  return async (data: TInput): Promise<TOutput> => (await fn(data)).data;
+  return async (data: TInput): Promise<TOutput> =>
+    (await httpsCallable<TInput, TOutput>(getFirebaseFunctions(), name)(data)).data;
 }

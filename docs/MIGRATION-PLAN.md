@@ -296,3 +296,18 @@ At no point is legacy data deleted by the migration.
   migration, only NEW documents get server-reserved numbers" rule already applied to invoices.
 - A migrated Credit/Debit Note's `invoiceId`/`purchaseId` reference must resolve to an
   already-migrated invoice/purchase — migration order matters here exactly as it does for payments.
+
+## Phase 9 — Reports, Analytics & Dashboard readiness (implemented)
+
+- **No migration impact.** Reports read existing collections as-is; nothing about the migration order
+  or shape of `invoices`/`purchases`/`journalEntries`/`expenses`/`cashEntries`/`stockMovements`
+  changes for this phase, so every report is correct immediately once its underlying documents are
+  migrated (no separate "reports data" migration step exists or is needed).
+- **GST Filing and Shop Comparison depend on migrated journal entries being present and balanced**
+  (BR-ACC-01) for their figures to be meaningful — this was already a precondition for Trial
+  Balance/P&L/Balance Sheet in Phase 7's migration plan, and Phase 9 adds no new precondition beyond
+  it.
+- **The Wastage/Shrinkage KPI depends on migrated stock movements carrying `reasonCategory`.** A
+  migrated `adjustment` movement without a `reasonCategory` value is simply excluded from the KPI
+  (not double-counted, not mis-categorized) — the same "if the field isn't there, treat it as absent,
+  never guess" rule already applied elsewhere in this migration.

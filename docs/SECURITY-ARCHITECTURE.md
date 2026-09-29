@@ -437,3 +437,35 @@ above is the target; the items below are implemented, tested and in the reposito
 - No generic manual return/adjustment callable exists beyond `saveCreditNote`/`saveDebitNote`
   themselves, and neither supports edit or delete — reducing the reachable state space to exactly
   what TD documents, per §65.
+
+## Phase 9 — Reports, Analytics & Dashboard (implemented)
+
+- **No new attack surface.** Reports add zero new Cloud Functions, zero new Firestore collections,
+  and zero new Firestore rules — every report reads a collection whose rules (business-id scoping,
+  location-gated reads where the source data is location-scoped, permission-gated reads) were already
+  proven in Phases 4–8's `tests/rules/*.test.ts`. Re-running the full rules-emulator suite after this
+  phase's changes confirms no regression: 77/77 tests still pass across
+  `masterdata.test.ts`/`sales.test.ts`/`inventory.test.ts`/`operations.test.ts` and the three
+  `*.emu.test.ts` transaction suites.
+- **Every report query is client-authorized the same way every other read in this app is:**
+  `businessId` for the query comes from the authenticated session (`useAuthStore`), never from a
+  route param or user input, and the Firestore rules independently re-check it server-side — a report
+  page cannot widen what its own queries are allowed to return by asking differently.
+- **Location isolation holds report-by-report, not globally.** A user without access to Location B's
+  data can never see it in a report: Sales Reports/Expense Report/Cash Report/Wastage KPI filter by
+  the session's `currentLocationId` (never a location the user picked ad hoc without permission), and
+  Dashboard/Dues/Payables/Shop Comparison/GST Filing — which are all-locations by design, matching
+  the legacy screens they replace (TD §3.1/§6.5/§6.8/§3.5) — read only through the same
+  location-gated rules as every other page, so a location the session can't see contributes nothing
+  to those totals either.
+- **GST Filing's CSV export never widens access.** `downloadCSV()` builds its file purely from data
+  the page already fetched under the page's own `gst.view` permission and its already-applied date/
+  location filters — there is no separate export endpoint that could be called with different (wider)
+  parameters.
+- **Reports never recompute a security-relevant number from raw inputs.** GST tax amounts, invoice
+  totals, and journal-entry balances are always read from their stored, server-computed fields; no
+  report page re-runs the tax engine or re-sums debits/credits from user-editable data, so a report
+  can't be tricked into showing a manipulated figure by a client-side calculation bug.
+- **Bounded reads only.** Every report query carries a `limit` (`LEDGER_FETCH_CAP = 5000` or a smaller
+  page-specific bound); no report can be used to force an unbounded, resource-exhausting scan of a
+  collection.

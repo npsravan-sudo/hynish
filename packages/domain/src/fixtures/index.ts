@@ -4,7 +4,7 @@
  */
 import type {
   Business, Member, Location, Product, Customer, Supplier, Invoice, Payment, JournalEntry,
-  StockMovement, BusinessSettings,
+  StockMovement, BusinessSettings, CreditNote,
 } from '../schemas/index.js';
 
 const AUDIT = {
@@ -97,6 +97,25 @@ export function invoiceFixture(over: Partial<Invoice> = {}): Invoice {
     subtotalPaise: 90000, cgstPaise: 2250, sgstPaise: 2250, igstPaise: 0, taxPaise: 4500,
     roundOffPaise: 0, grandTotalPaise: 94500, initialPaidPaise: 94500, paidPaise: 94500,
     outstandingPaise: 0, paymentStatus: 'paid', notes: '', source: null, createdByName: 'Owner', revision: 0,
+    ...over,
+  };
+}
+
+export function creditNoteFixture(over: Partial<CreditNote> = {}): CreditNote {
+  return {
+    id: 'cn-1', businessId: BID, ...AUDIT, ...SOFT,
+    number: 'CN/2627/0001', fy: '2627', seq: 1,
+    date: '2026-04-06', locationId: 'loc-baby-step', invoiceId: 'inv-1', invoiceNumber: 'INV/2627/0001',
+    customerId: 'cust-acme', customerSnapshot: { name: 'Acme Traders', gstin: '29ABCDE1234F1Z5', stateCode: '29', address: 'Market Street', phone: '9999900000' },
+    taxType: 'intra', gstApplicable: true, restock: false,
+    lines: [{
+      invoiceLineId: 'l1', lineId: 'l1', productId: 'prod-shirt', variantId: 'v-m-blue', nameSnapshot: 'Cotton Shirt',
+      codeSnapshot: 'SHIRT001', hsnSnapshot: '6205', unit: 'Pcs', qty: 1, baseQty: 1,
+      ratePaise: 45000, discountBp: 0, gstRateBp: 500, taxablePaise: 45000, cgstPaise: 1125,
+      sgstPaise: 1125, igstPaise: 0, totalPaise: 47250, unitCostPaise: 30000,
+    }],
+    subtotalPaise: 45000, cgstPaise: 1125, sgstPaise: 1125, igstPaise: 0, taxPaise: 2250,
+    roundOffPaise: 0, grandTotalPaise: 47250, reason: '',
     ...over,
   };
 }

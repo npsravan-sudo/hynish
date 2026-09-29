@@ -39,6 +39,7 @@ import {
   FileCheck2,
   BadgeIndianRupee,
   BarChart3,
+  GitCompare,
   ShieldCheck,
   History,
   Settings,
@@ -133,7 +134,10 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'reports',
     label: 'Reports',
     icon: BarChart3,
-    items: [{ label: 'Reports', to: '/reports', icon: BarChart3, permission: 'reports.view', end: true }],
+    items: [
+      { label: 'Reports', to: '/reports', icon: BarChart3, permission: 'reports.view', end: true },
+      { label: 'Shop Comparison', to: '/reports/shop-comparison', icon: GitCompare, permission: 'shopComparison.view' },
+    ],
   },
   {
     id: 'admin',

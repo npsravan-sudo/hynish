@@ -702,3 +702,39 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
   deletedAt+customerId+date); creditNotes (deletedAt+date; deletedAt+locationId+date;
   deletedAt+invoiceId+date); debitNotes (deletedAt+date; deletedAt+locationId+date;
   deletedAt+purchaseId+date).
+
+## Phase 9 — Reports, Analytics & Dashboard (implemented)
+
+**No new collections.** Every report reads existing collections (`invoices`, `creditNotes`,
+`purchases`, `journalEntries`, `expenses`, `cashEntries`, `stockMovements`, `products`) through the
+existing repository layer, bounded by a `limit` on each query (never an unbounded scan), and computes
+its numbers with pure functions in `packages/domain/src/reports.ts` — never a second, competing
+implementation of a calculation that already exists elsewhere in the domain package.
+
+- `generatePeriods`/`bucketByPeriod` — shared day/week/month bucketing (week = Monday-start ISO
+  week) used by Sales Reports, Dashboard's trend chart, Expense Report's trend, and Cash Report's
+  trend. One implementation, four call sites.
+- `duesSummary()` — generic receivables/payables aggregator taking `totalOf`/`paidOf`/`partyOf`
+  accessor functions, so the exact same code (and the exact same numbers) backs the Dashboard's
+  Outstanding Dues card, the Dues page, and the Payables page (BR-DUE-08).
+- `salesSummary`, `topProductsFromInvoices`, `topCustomersFromInvoices`, `performanceByCreator` —
+  Sales Reports (BR-RPT-04), computed only from stored/posted invoice fields.
+- `gstFilingSummary`, `gstFilingReadiness` — GST Filing (BR-RPT-05/06/07); Without-GST invoices are
+  excluded from every taxable/tax total; net figures subtract same-month credit notes; tax amounts
+  are summed from the stored per-line fields, never recalculated through the tax engine.
+- `expenseKpis`, `expensesByCategory` and `cashKpis`, `cashByCategory` — extend the existing Expense
+  and Cash Book pages with a 14-period trend and a By Category table, reusing each page's already
+  location-scoped data (no new query for Cash Book; one bounded extra query for Expenses' "Net This
+  Month").
+- Wastage/Shrinkage (TD §4.3): a bounded read of this month's `type=adjustment`,
+  `reasonCategory=wastage` stock movements at the working location, valued at each product's
+  **current** `purchasePricePaise` — adjustment movements don't carry a historical unit cost, so a
+  live valuation is the only value that can be computed from stored data (documented interpretation,
+  not an invented rule).
+- Shop Comparison (BR-ACC-20/21): per-location Sales/COGS/Gross Profit/Expenses/Net Profit computed
+  from the SAME double-entry ledger as Trial Balance/P&L/Balance Sheet (Phase 7's `sumByAccount`),
+  plus a bill count from invoices and an all-locations combined row.
+- No new indexes: every Phase 9 query reuses an index already declared for its collection in Phases
+  5–8 (date-ordered, optionally filtered by `locationId` and/or `deletedAt`/`status`).
+- No new Cloud Functions: reports are strictly read-only, so nothing in this phase touches
+  `functions/`.

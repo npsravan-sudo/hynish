@@ -65,6 +65,10 @@ const CashBookPage = page(() => import('@/features/accounting/cash-book-page'), 
 const ExpenseListPage = page(() => import('@/features/accounting/expense-list-page'), 'ExpenseListPage');
 const ExpenseFormPage = page(() => import('@/features/accounting/expense-form-page'), 'ExpenseFormPage');
 const ExpenseDetailPage = page(() => import('@/features/accounting/expense-detail-page'), 'ExpenseDetailPage');
+const GstFilingPage = page(() => import('@/features/accounting/gst-filing-page'), 'GstFilingPage');
+
+// Reports & Analytics (Phase 9).
+const ShopComparisonPage = page(() => import('@/features/reports/shop-comparison-page'), 'ShopComparisonPage');
 
 // Business Operations (Phase 8): Delivery Notes, Credit Notes (sales-return equivalent), Debit
 // Notes (purchase-return equivalent). There is no separate "Sales Return"/"Purchase Return"
@@ -80,7 +84,6 @@ const DebitNoteFormPage = page(() => import('@/features/purchases/debit-note-for
 const DebitNoteDetailPage = page(() => import('@/features/purchases/debit-note-detail-page'), 'DebitNoteDetailPage');
 
 const inv = () => import('@/features/inventory/inventory-pages');
-const acc = () => import('@/features/accounting/accounting-pages');
 const admin = () => import('@/features/admin/admin-pages');
 
 const NotFoundPage = page(() => import('@/features/_shared/not-found-page'), 'NotFoundPage');
@@ -183,12 +186,18 @@ const shellChildren: RouteObject[] = [
       { path: 'expenses/new', element: guarded(ExpenseFormPage, 'expenses.manage') },
       { path: 'expenses/:id', element: guarded(ExpenseDetailPage, 'expenses.view') },
       { path: 'expenses/:id/edit', element: guarded(ExpenseFormPage, 'expenses.manage') },
-      { path: 'gst', element: guarded(page(acc, 'GstFilingPage'), 'gst.view') },
+      { path: 'gst', element: guarded(GstFilingPage, 'gst.view') },
     ],
   },
 
   { path: 'payroll', element: guarded(PayrollPage, 'payroll.view') },
-  { path: 'reports', element: guarded(ReportsPage, 'reports.view') },
+  {
+    path: 'reports',
+    children: [
+      { index: true, element: guarded(ReportsPage, 'reports.view') },
+      { path: 'shop-comparison', element: guarded(ShopComparisonPage, 'shopComparison.view') },
+    ],
+  },
 
   {
     path: 'admin',

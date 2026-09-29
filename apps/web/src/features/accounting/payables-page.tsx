@@ -1,34 +1,30 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HandCoins } from 'lucide-react';
-import { formatINR, outstandingOf, isOutstanding, todayISO, type Purchase } from '@hynish/domain';
+import { formatINR, outstandingOf, isOutstanding, todayISO, duesSummary, type Purchase } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DataList, type Column } from '@/components/data/data-list';
 import { ListToolbar } from '@/components/data/list-toolbar';
 import { SectionCard } from '@/components/premium';
-import { useRepositories } from '@/hooks/use-master-data';
-import { usePagedList } from '@/hooks/use-paged-list';
-import type { ListParams } from '@/infrastructure/repositories/firestore-repository';
+import { useOutstandingPurchaseSource } from '@/features/purchases/use-payables';
 import { clientSearch } from '@/features/_shared/master-data';
 
-// §25: supplier payables mirror sales receivables exactly, over purchases and suppliers (BR-DUE-07).
-const PARAMS: ListParams = { orderByField: 'date', direction: 'desc', limit: 100, filters: [{ field: 'deletedAt', op: '==', value: null }] };
-
+/** Payables (BR-DUE-07/08): mirrors Receivables exactly, over purchases and suppliers. */
 export function PayablesPage() {
   const navigate = useNavigate();
-  const repos = useRepositories();
   const [search, setSearch] = useState('');
-  const { items, loading, error, refresh } = usePagedList(repos.purchases, useMemo(() => PARAMS, []));
+  const { purchases: items, loading, error, refresh } = useOutstandingPurchaseSource();
 
   const outstanding = useMemo(() => items.filter((p) => isOutstanding(p.totalPaise, p.paidPaise)), [items]);
   const filtered = clientSearch(outstanding, search, (p) => [p.supplierBillNo, p.supplierSnapshot?.name ?? '']);
 
   const today = todayISO();
-  const totalOutstanding = outstanding.reduce((s, p) => s + outstandingOf(p.totalPaise, p.paidPaise), 0);
-  const overdue = outstanding.filter((p) => p.dueDate && p.dueDate < today);
-  const overdueTotal = overdue.reduce((s, p) => s + outstandingOf(p.totalPaise, p.paidPaise), 0);
+  const summary = useMemo(
+    () => duesSummary(items, (p) => p.totalPaise, (p) => p.paidPaise, (p) => p.supplierId, today),
+    [items, today],
+  );
 
   function overdueBadge(p: Purchase) {
     if (!p.dueDate) return <Badge variant="secondary">No due date</Badge>;
@@ -51,10 +47,11 @@ export function PayablesPage() {
         description="Outstanding amounts owed to suppliers from unpaid and partially paid purchases."
         filters={<ListToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search supplier, bill no…" />}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SectionCard title="Total payable"><p className="num text-2xl font-bold">{formatINR(totalOutstanding)}</p></SectionCard>
-        <SectionCard title="Overdue"><p className="num text-2xl font-bold text-danger">{formatINR(overdueTotal)}</p></SectionCard>
-        <SectionCard title="Purchases with dues"><p className="num text-2xl font-bold">{outstanding.length}</p></SectionCard>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionCard title="Total payable"><p className="num text-2xl font-bold">{formatINR(summary.totalOutstandingPaise)}</p></SectionCard>
+        <SectionCard title="Overdue"><p className="num text-2xl font-bold text-danger">{formatINR(summary.overdueTotalPaise)}</p></SectionCard>
+        <SectionCard title="Due in next 7 days"><p className="num text-2xl font-bold text-warning">{formatINR(summary.dueSoonTotalPaise)}</p></SectionCard>
+        <SectionCard title="Suppliers with dues"><p className="num text-2xl font-bold">{summary.partiesWithDuesCount}</p></SectionCard>
       </div>
       <DataList
         items={filtered}

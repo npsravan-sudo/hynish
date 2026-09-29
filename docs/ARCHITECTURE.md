@@ -615,3 +615,45 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
   established convention that only logic reused by multiple callers (`post-core.ts`,
   `stock-core.ts`, `reserve-core.ts`) gets extracted into a shared module — none of these four is
   called from anywhere but its own UI form.
+
+## Phase 9 — Reports, Analytics & Dashboard flow (implemented)
+
+Reports are strictly read-only and follow one flow throughout: **UI page → report hook (a bounded
+`useLedgerAggregate` fetch, Phase 7) → pure calculation in `packages/domain/src/reports.ts` → render.**
+No report page imports Firestore or a repository directly (unchanged rule); no report recomputes a
+number a Cloud Function already computed and stored (GST totals, invoice totals, journal balances are
+always read, never re-derived).
+
+- **One aggregation hook, reused everywhere.** `useLedgerAggregate` (built in Phase 7 for the General
+  Ledger/Trial Balance/P&L) is the aggregation primitive for every new report: Dashboard, Sales
+  Reports, Shop Comparison, GST Filing, Dues, Payables, the Expense/Cash trend additions, and the
+  Wastage KPI all call it directly instead of each report inventing its own fetch-everything loop.
+  Each page issues 1–3 bounded fetches (never a fetch per KPI), and where two pages need the exact
+  same figure they share the same hook or the same already-fetched array rather than duplicating the
+  query: `useOutstandingInvoiceSource()` backs both the Dashboard's Outstanding Dues card and the
+  Dues page; `useOutstandingPurchaseSource()` mirrors it for Payables; Cash Book's new KPIs/trend/
+  category table reuse the page's existing `entries` fetch with no new query at all.
+- **Independent widget failure.** Each Dashboard KPI/section computes from its own bounded fetch and
+  renders its own loading/error/empty state (`TrendChart`, `RecentInvoicesTable`, `LowStockTable`),
+  so one failed or slow widget never blocks or crashes the rest of the dashboard.
+- **Bounded, not realtime.** No report page uses an `onSnapshot` listener; every fetch is a bounded,
+  capped, manually-refreshable query (`useLedgerAggregate`'s `LEDGER_FETCH_CAP = 5000`, or a smaller
+  page-specific limit), consistent with §33's "avoid aggressive realtime listeners" instruction.
+- **Charts never calculate.** The shared `TrendChart` component (`components/charts/trend-chart.tsx`)
+  is a pure renderer: it takes precomputed `{key, label, value}` points from a report's `bucketByPeriod`
+  call and never touches raw documents itself. It reuses the app's existing dual-themed `--chart-1..6`
+  CSS tokens (no new palette) and offers a Chart/Table toggle for accessibility.
+- **Location scoping matches the source.** Sales Reports, Expense Report, Cash Report, and the
+  Wastage KPI are scoped to the *working* location (TD §3.7/§6.3/§6.4/§4.3); Dashboard KPIs, Dues,
+  Payables, Shop Comparison, and GST Filing aggregate *all* locations (TD §3.1/§6.5/§6.8/§3.5) —
+  each page's query filters (or deliberately omits) `locationId` to match, never left to client-side
+  guessing.
+- **CSV export is client-side only.** `downloadCSV()` (`lib/csv.ts`) builds a CSV from data the
+  caller already holds in memory (already gated by the page's own permission and location scoping);
+  no server round-trip, no new callable, matching the TD's `downloadB2BCsv`-style client export.
+- **Deliberately not built** (§65/§68, source-grounded): a standalone Purchase Reports screen (not
+  documented as a distinct screen — Purchases already has its own filterable list, Phase 6), a Bank
+  Report/reconciliation screen (no Bank Operations module exists at all, Phase 8), a separate
+  "Sales by Location" report (folded into Shop Comparison's per-location `sales` column), a new
+  Account Statement page (Phase 7's General Ledger already is the per-account date/ref/debit/credit/
+  running-balance statement), and any generic SaaS metric not in the TD (LTV, CAC, MRR, ARR, churn).

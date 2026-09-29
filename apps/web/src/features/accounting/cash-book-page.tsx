@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Banknote } from 'lucide-react';
-import { formatINR, type Location } from '@hynish/domain';
+import { formatINR, todayISO, bucketByPeriod, cashKpis, cashByCategory, type Location, type ReportGranularity } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { SectionCard } from '@/components/premium';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { EmptyState } from '@/components/feedback/empty-state';
 import { ErrorState } from '@/components/feedback/error-state';
 import { TableSkeleton } from '@/components/feedback/skeletons';
+import { TrendChart } from '@/components/charts/trend-chart';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRepositories } from '@/hooks/use-master-data';
 import { useLedgerAggregate } from './use-ledger-aggregate';
@@ -26,6 +27,7 @@ export function CashBookPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState<string>('');
   const [logOpen, setLogOpen] = useState(false);
+  const [granularity, setGranularity] = useState<ReportGranularity>('day');
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +53,17 @@ export function CashBookPage() {
   const net = entries.reduce((s, e) => s + (e.type === 'in' ? e.amountPaise : -e.amountPaise), 0);
   const balance = (location?.openingCashBalancePaise ?? 0) + net;
 
+  const today = todayISO();
+  const kpis = useMemo(() => cashKpis(entries, today), [entries, today]);
+  const byCategory = useMemo(() => cashByCategory(entries), [entries]);
+  const trendPoints = useMemo(() => {
+    const buckets = bucketByPeriod(entries, (e) => e.date, granularity, 14, today);
+    return buckets.map((b) => ({
+      key: b.period.key, label: b.period.label,
+      value: b.items.reduce((s, e) => s + (e.type === 'in' ? e.amountPaise : -e.amountPaise), 0),
+    }));
+  }, [entries, granularity, today]);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -70,6 +83,47 @@ export function CashBookPage() {
         <SectionCard title="Net (all-time)"><p className={`num text-2xl font-bold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{formatINR(net)}</p></SectionCard>
         <SectionCard title="Balance"><p className="num text-2xl font-bold">{formatINR(balance)}</p></SectionCard>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SectionCard title="Today"><p className={`num text-xl font-semibold ${kpis.todayNetPaise >= 0 ? 'text-success' : 'text-danger'}`}>{formatINR(kpis.todayNetPaise)}</p></SectionCard>
+        <SectionCard title="This month"><p className={`num text-xl font-semibold ${kpis.monthNetPaise >= 0 ? 'text-success' : 'text-danger'}`}>{formatINR(kpis.monthNetPaise)}</p></SectionCard>
+      </div>
+
+      {!loading && !error && entries.length > 0 && (
+        <>
+          <SectionCard
+            title="Cash trend"
+            description="Net movement (in − out) — last 14 periods."
+            action={
+              <Select value={granularity} onValueChange={(v) => setGranularity(v as ReportGranularity)}>
+                <SelectTrigger className="w-32" aria-label="Group by"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">By day</SelectItem>
+                  <SelectItem value="week">By week</SelectItem>
+                  <SelectItem value="month">By month</SelectItem>
+                </SelectContent>
+              </Select>
+            }
+          >
+            <TrendChart data={trendPoints} formatValue={(v) => formatINR(v, { withSymbol: false })} unitLabel="Net" emptyMessage="No entries in the last 14 periods" />
+          </SectionCard>
+
+          <SectionCard title="By category" description="All-time, at this location.">
+            <Table>
+              <TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {byCategory.map((c) => (
+                  <TableRow key={`${c.type}_${c.category}`}>
+                    <TableCell className="font-medium">{c.category}</TableCell>
+                    <TableCell><Badge variant={c.type === 'in' ? 'success' : 'secondary'} className="capitalize">{c.type}</Badge></TableCell>
+                    <TableCell className="num text-right">{formatINR(c.totalPaise)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SectionCard>
+        </>
+      )}
 
       {loading ? <TableSkeleton rows={6} cols={5} /> : error ? <ErrorState message={error} onRetry={refresh} /> : entries.length === 0 ? (
         <EmptyState icon={Banknote} title="No entries yet" description="Log a Cash Book entry to start tracking cash at this location." />

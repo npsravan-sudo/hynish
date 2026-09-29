@@ -1287,3 +1287,43 @@ never trusting the browser's number.
 - **Edit or delete for a Credit Note or Debit Note.** Not documented in the source — once issued,
   neither is edited or deleted in the legacy app. A price correction is its own new Credit Note
   (restock unchecked); nothing is retracted in place.
+
+## Phase 9 — Reports, Analytics & Dashboard parity (implemented)
+
+Preserved: Dashboard KPI set and semantics (Today's/Month Sales all-locations with a "vs
+yesterday/last month %" shown only when the comparison base is non-zero, Outstanding Dues
+all-locations, Low Stock at the working location, Recent Invoices top-4 — BR-RPT-01/02/03/09);
+Sales Reports' working-location scope, 14-period day/week/month grouping, Top Products/Top
+Customers/performance-by-creator (BR-RPT-04, TD §3.7); GST Filing's monthly B2B/B2C/Without-GST
+split, HSN summary, and readiness checklist, with tax figures summed from stored fields rather
+than recalculated (BR-RPT-05/06/07, TD §6.5); Shop Comparison's per-location Sales/COGS/Gross
+Profit/Expenses/Net Profit computed from the same ledger as the financial statements, plus a
+combined all-locations row (BR-ACC-20, TD §3.5); Expense Report and Cash Analysis's existing KPIs
+extended with a trend and a By Category breakdown, still scoped exactly as before (BR-EXP-03, TD
+§6.3/§6.4); Wastage/Shrinkage valued at purchase price (TD §4.3).
+
+Legacy limitations NOT reproduced: client-side, ad hoc report calculations scattered per screen →
+every calculation lives once in `packages/domain/src/reports.ts` and is shared by every screen that
+needs it (e.g. Dashboard, Dues and Payables all call the same `duesSummary()`, so the three screens
+can never quietly disagree); an unbounded "load everything then compute" report query → every report
+fetch is capped (`LEDGER_FETCH_CAP` or a smaller page-specific bound); a single slow/broken report
+widget taking down the whole dashboard → each Dashboard KPI/section has its own independent
+loading/error/empty state.
+
+**Deliberately not built, and why (§65/§68):**
+- **A standalone Purchase Reports screen.** Not documented in the TD as a distinct report screen —
+  Purchases already has its own filterable, sortable list (Phase 6), which is the closest the source
+  gets to a "purchase report." Building a separate analytics screen for it would be inventing a
+  report the source doesn't have.
+- **A Bank Report or bank reconciliation screen.** Confirmed absent in Phase 8 (no Bank Operations
+  module exists at all in the source) — a Bank *Report* over a feature that doesn't exist would be
+  doubly invented. See `docs/OPEN-QUESTIONS.md` (OQ-28).
+- **A separate "Sales by Location" report.** Fully covered by Shop Comparison's per-location `sales`
+  column (BR-ACC-20) — a second report showing the same number a second way would be redundant, not
+  additive.
+- **A new Account Statement page.** Phase 7's General Ledger already is the per-account date/
+  reference/debit/credit/running-balance statement the TD describes (TD §6.2) — building a second
+  page for the same data under a different name would fragment, not extend, existing behavior.
+- **Generic SaaS metrics** (LTV, CAC, MRR, ARR, churn, cohort retention, and similar). None appear
+  anywhere in the TD; this is a wholesale ledger, not a subscription business, so these metrics have
+  no defined meaning in the source and are not invented for this rebuild (§65 "don't invent").

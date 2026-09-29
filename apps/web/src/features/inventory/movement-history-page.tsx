@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react';
 import { History } from 'lucide-react';
-import { STOCK_MOVEMENT_TYPES, type StockMovement, type StockMovementType } from '@hynish/domain';
+import { STOCK_MOVEMENT_TYPES, formatINR, todayISO, monthKey, type StockMovement, type StockMovementType } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DataList, type Column } from '@/components/data/data-list';
 import { ListToolbar } from '@/components/data/list-toolbar';
+import { SectionCard } from '@/components/premium';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRepositories } from '@/hooks/use-master-data';
 import { usePagedList } from '@/hooks/use-paged-list';
 import type { ListParams } from '@/infrastructure/repositories/firestore-repository';
 import { clientSearch } from '@/features/_shared/master-data';
 import { useProductsById } from './use-inventory-refs';
+import { useLedgerAggregate } from '@/features/accounting/use-ledger-aggregate';
 
 export function MovementHistoryPage() {
   const locations = useAuthStore((s) => s.locations);
@@ -27,6 +29,24 @@ export function MovementHistoryPage() {
     filters: locationId ? [{ field: 'locationId', op: '==', value: locationId }] : [],
   }), [locationId]);
   const { items, loading, loadingMore, error, hasMore, loadMore, refresh } = usePagedList(repos.stockMovements, params);
+
+  // "Wastage/Shrinkage this month" KPI (TD §4.3): category==='wastage' adjustment movements,
+  // valued at the product's purchase price — a separate bounded fetch scoped to this month/location.
+  const thisMonthKey = monthKey(todayISO());
+  const wastageParams = useMemo(() => ({
+    filters: [
+      { field: 'type', op: '==' as const, value: 'adjustment' },
+      { field: 'reasonCategory', op: '==' as const, value: 'wastage' },
+      ...(locationId ? [{ field: 'locationId', op: '==' as const, value: locationId }] : []),
+      { field: 'date', op: '>=' as const, value: `${thisMonthKey}-01` },
+    ],
+    orderByField: 'date' as const, limit: 1000,
+  }), [locationId, thisMonthKey]);
+  const { items: wastageMovements, loading: wastageLoading } = useLedgerAggregate(repos.stockMovements, wastageParams);
+  const wastageValuePaise = useMemo(
+    () => wastageMovements.reduce((s, m) => s + Math.abs(m.qtyChange) * (byId.get(m.productId)?.purchasePricePaise ?? 0), 0),
+    [wastageMovements, byId],
+  );
 
   const filtered = useMemo(() => {
     let list = items;
@@ -67,6 +87,9 @@ export function MovementHistoryPage() {
           />
         }
       />
+      <SectionCard title="Wastage / shrinkage this month" description="Adjustment movements marked as wastage, valued at each product's current purchase price (TD §4.3).">
+        <p className="num text-2xl font-bold text-danger">{wastageLoading ? '…' : formatINR(wastageValuePaise)}</p>
+      </SectionCard>
       <DataList
         items={filtered}
         getRowId={(m) => m.id}

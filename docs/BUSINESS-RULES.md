@@ -464,3 +464,34 @@ Server-authoritative: client writes to accounts/journalEntries/cashEntries are d
 
 Server-authoritative: client writes to expenseCategories/expenses/deliveryNotes/creditNotes/debitNotes
 are denied (`tests/rules/operations.test.ts`); every mutation is idempotent by requestId.
+
+## Phase 9 — Reports, Analytics & Dashboard rules (implemented)
+
+Reports are **read-only** — no new writes, no new Cloud Functions, no new Firestore collections. Every
+figure is either read straight from a stored/posted field or summed client-side over documents the
+existing Firestore rules already scope to the caller's business and, where relevant, location.
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-RPT-01 Dashboard Today's/Month Sales all-locations; "vs yesterday/last month %" shown only when the comparison base > 0 | `dashboard-page.tsx`, `use-dashboard-data.ts` | `reports.test.ts` (`salesSummary`) + manual verification |
+| BR-RPT-02 Dashboard Outstanding Dues all-locations, with count of customers whose gap > 50 paise | `dashboard-page.tsx` via `duesSummary()` | `reports.test.ts` (`duesSummary`) |
+| BR-RPT-03 Dashboard Low Stock at the working location, `qty ≤ threshold` | `dashboard-page.tsx` via `stockStatus()` (Phase 6) | pre-existing `inventory.test.ts` |
+| BR-RPT-04 Sales Reports scoped to the working location; day/week/month grouping over the last 14 periods; Top Products/Top Customers from invoice lines; performance by `createdBy` | `reports-page.tsx` via `salesSummary`/`bucketByPeriod`/`topProductsFromInvoices`/`topCustomersFromInvoices`/`performanceByCreator` | `reports.test.ts` (all five) |
+| BR-RPT-05 GST Filing monthly; Without-GST invoices listed separately and excluded from taxable/tax totals and exports; taxable split B2B/B2C; tax summed from stored per-invoice fields, never recalculated | `gst-filing-page.tsx` via `gstFilingSummary()` | `reports.test.ts` (`gstFilingSummary`) |
+| BR-RPT-06 HSN summary grouped by `hsn \| gstRate` | `gst-filing-page.tsx` via `toGstFilingRow`/`gstFilingSummary` (HSN rows) | `reports.test.ts` |
+| BR-RPT-07 Filing readiness: business GSTIN set, each B2B GSTIN valid, no taxable line without an HSN | `gst-filing-page.tsx` via `gstFilingReadiness()` (reuses `isValidGstin`) | `reports.test.ts` (`gstFilingReadiness`) |
+| BR-RPT-09 Recent Invoices on Dashboard: top 4 by date then `createdAt`, newest first (**[FIX]**, true sort) | `dashboard-page.tsx` (`RecentInvoicesTable`) | manual verification |
+| BR-ACC-20 Shop Comparison per location from the ledger: sales/COGS/gross/expenses/net + bill count, plus an all-locations combined row | `shop-comparison-page.tsx`, `shop-comparison-helpers.ts::shopComparisonRows` (reuses Phase 7 `sumByAccount`) | manual verification against General Ledger/P&L for the same range |
+| BR-ACC-21 Financial statements and GST Filing aggregate all locations | `shop-comparison-page.tsx` (journal/invoice fetches carry no `locationId` filter); `gst-filing-page.tsx` (same) | code review |
+| BR-DUE-08 (Dues/Payables KPI completeness) — "due in next 7 days" and party count added to both Dues and Payables, sharing `duesSummary()` with the Dashboard so the three numbers never disagree | `dues-page.tsx`, `payables-page.tsx`, `dashboard-page.tsx` | `reports.test.ts` (`duesSummary`) |
+| BR-EXP-03 (extended) Expense Report gains a 14-period trend and a By Category table, still scoped to the working location | `expense-list-page.tsx` via `expenseKpis`/`expensesByCategory`/`bucketByPeriod` | `reports.test.ts` |
+| TD §6.3 Cash Analysis: Today/This-month net, a 14-period trend and a By Category table over the already-fetched Cash Book entries | `cash-book-page.tsx` via `cashKpis`/`cashByCategory`/`bucketByPeriod` | `reports.test.ts` |
+| TD §4.3 Wastage/Shrinkage this month: `type=adjustment`, `reasonCategory=wastage` movements this month at the working location, valued at each product's **current** `purchasePricePaise` (no historical cost is stored on adjustment movements) | `movement-history-page.tsx` | manual verification; deliberate documented interpretation, not an invented rule — see `docs/PHASE-9-COMPLETION.md` |
+| §68 No separate Purchase Reports screen, Bank Report/reconciliation, or generic SaaS metrics (LTV/CAC/MRR/ARR) — none are documented in the source | *(deliberately not built)* | see `docs/PHASE-9-COMPLETION.md` |
+| §68 No separate "Sales by Location" report or Account Statement page — folded into Shop Comparison's per-location `sales` column and Phase 7's General Ledger respectively | *(deliberately not built)* | see `docs/PHASE-9-COMPLETION.md` |
+
+Location/business isolation: no new collections or rules were added this phase. Every report reads
+`invoices`, `purchases`, `journalEntries`, `expenses`, `cashEntries` or `stockMovements` through the
+existing repository layer, so the existing Firestore rules (business-id and location-id scoping,
+verified in `tests/rules/*.test.ts`, 77/77 passing) apply unchanged — a user without access to a
+location can never receive its data through a report.
