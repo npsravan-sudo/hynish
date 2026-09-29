@@ -5,7 +5,7 @@
  * §6.1), so nothing in the UI posts journal entries directly — they are always a side effect of
  * sales/purchases/payments, already covered by those services.
  */
-import type { CreateAccount } from '@hynish/domain';
+import type { CreateAccount, CreateExpense } from '@hynish/domain';
 import { callable } from '@/lib/firebase/functions';
 
 type Req = { requestId: string };
@@ -13,6 +13,9 @@ type Req = { requestId: string };
 const seedFn = callable<{ businessId: string }, { created: number; total: number }>('seedChartOfAccounts');
 const saveAccountFn = callable<CreateAccount & { businessId: string } & Req, { accountId: string }>('saveAccount');
 const deleteAccountFn = callable<{ businessId: string; id: string }, { ok: boolean }>('deleteAccount');
+const seedExpenseCategoriesFn = callable<{ businessId: string }, { created: number; total: number }>('seedExpenseCategories');
+const saveExpenseFn = callable<CreateExpense & { businessId: string; id?: string } & Req, { expenseId: string }>('saveExpense');
+const deleteExpenseFn = callable<{ businessId: string; id: string } & Req, { ok: boolean }>('deleteExpense');
 
 export interface LogCashEntryInput {
   date: string;
@@ -35,6 +38,11 @@ export function createAccountingService(businessId: string) {
     },
     cashBook: {
       log: (input: LogCashEntryInput & Req) => logCashEntryFn({ businessId, ...input }),
+    },
+    expenses: {
+      seedCategories: () => seedExpenseCategoriesFn({ businessId }),
+      save: (input: CreateExpense & { id?: string } & Req) => saveExpenseFn({ businessId, ...input }),
+      remove: (id: string, requestId: string) => deleteExpenseFn({ businessId, id, requestId }),
     },
   };
 }

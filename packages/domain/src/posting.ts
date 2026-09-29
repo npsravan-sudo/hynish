@@ -72,6 +72,55 @@ export function journalLinesForPaymentOut(amountPaise: number, mode: string): Jo
   ];
 }
 
+/** Expense journal (`expense`, BR-EXP-01, TD §6.1.5): Dr the category's expense account, Cr Cash-or-Bank(mode). */
+export function journalLinesForExpense(amountPaise: number, categoryAccountId: string, mode: string): JournalLineInput[] {
+  if (amountPaise <= 0) return [];
+  return [
+    { accountId: categoryAccountId, debitPaise: amountPaise, creditPaise: 0 },
+    { accountId: cashOrBankAccountId(mode), debitPaise: 0, creditPaise: amountPaise },
+  ];
+}
+
+/**
+ * Credit Note journal (`credit_note`, BR-CN-03): Dr Sales Revenue (taxable), Dr GST Output Payable
+ * (tax, if any), Cr Accounts Receivable (total). This is a pure reversal of the invoice's own
+ * revenue/tax lines for the credited amount — never a new accounting treatment.
+ */
+export function journalLinesForCreditNote(subtotalPaise: number, taxPaise: number, totalPaise: number): JournalLineInput[] {
+  const lines: JournalLineInput[] = [];
+  if (subtotalPaise > 0) lines.push({ accountId: 'acc-sales', debitPaise: subtotalPaise, creditPaise: 0 });
+  if (taxPaise > 0) lines.push({ accountId: 'acc-gst-output', debitPaise: taxPaise, creditPaise: 0 });
+  if (totalPaise > 0) lines.push({ accountId: 'acc-ar', debitPaise: 0, creditPaise: totalPaise });
+  return lines;
+}
+
+/** Credit Note COGS journal (`credit_note_cogs`, BR-CN-04): only when `restock` — Dr Inventory / Cr COGS (reverse of invoice COGS). */
+export function journalLinesForCreditNoteCogs(totalCogsPaise: number): JournalLineInput[] {
+  if (totalCogsPaise <= 0) return [];
+  return [
+    { accountId: 'acc-inventory', debitPaise: totalCogsPaise, creditPaise: 0 },
+    { accountId: 'acc-cogs', debitPaise: 0, creditPaise: totalCogsPaise },
+  ];
+}
+
+/** Debit Note journal (`debit_note`, BR-DBN-03): Dr Accounts Payable / Cr Inventory. No GST (BR-DBN-02). */
+export function journalLinesForDebitNote(totalPaise: number): JournalLineInput[] {
+  if (totalPaise <= 0) return [];
+  return [
+    { accountId: 'acc-ap', debitPaise: totalPaise, creditPaise: 0 },
+    { accountId: 'acc-inventory', debitPaise: 0, creditPaise: totalPaise },
+  ];
+}
+
+/**
+ * Clamp a requested return/credit quantity to what's still eligible (BR-CN-01/BR-DBN-01):
+ * `[0, originalQty − alreadyReturnedQty]`. Server-authoritative — never trust a browser-computed cap.
+ */
+export function clampEligibleQty(originalQty: number, alreadyReturnedQty: number, requestedQty: number): number {
+  const eligible = Math.max(0, originalQty - alreadyReturnedQty);
+  return Math.max(0, Math.min(requestedQty, eligible));
+}
+
 /** Payment status (BR-PAY-02): due ≤ 50 paise → paid; else paid>0 → partial; else unpaid. */
 export function derivePaymentStatus(grandTotalPaise: number, paidPaise: number): PaymentStatus {
   const due = grandTotalPaise - paidPaise;

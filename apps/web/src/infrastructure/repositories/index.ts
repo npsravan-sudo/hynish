@@ -7,11 +7,12 @@ import {
   productSchema, customerSchema, supplierSchema, locationSchema, memberSchema,
   invoiceSchema, quotationSchema, deliveryNoteSchema, creditNoteSchema, debitNoteSchema,
   purchaseSchema, paymentSchema, accountSchema, journalEntrySchema, stockMovementSchema,
-  stockLevelSchema, expenseSchema, cashEntrySchema, activityLogSchema,
+  stockLevelSchema, expenseSchema, expenseCategorySchema, cashEntrySchema, activityLogSchema,
   businessSettingsSchema, integrationSettingsSchema,
   type Product, type Customer, type Supplier, type Location, type Member,
   type Invoice, type Quotation, type Payment, type Account, type JournalEntry, type StockMovement,
-  type StockLevel, type Purchase, type CashEntry,
+  type StockLevel, type Purchase, type CashEntry, type DeliveryNote, type CreditNote, type DebitNote,
+  type Expense, type ExpenseCategory,
   type BusinessSettings,
 } from '@hynish/domain';
 import { paths } from '../firestore/paths';
@@ -33,6 +34,11 @@ export interface Repositories {
   stockLevels: ReadRepository<StockLevel>;
   purchases: ReadRepository<Purchase>;
   cashEntries: ReadRepository<CashEntry>;
+  deliveryNotes: ReadRepository<DeliveryNote>;
+  creditNotes: ReadRepository<CreditNote>;
+  debitNotes: ReadRepository<DebitNote>;
+  expenses: ReadRepository<Expense>;
+  expenseCategories: ReadRepository<ExpenseCategory>;
   businessSettings: DocumentReader<BusinessSettings>;
 }
 
@@ -53,12 +59,17 @@ export function makeRepositories(businessId: string): Repositories {
     stockLevels: createReadRepository(paths.stockLevels(businessId), stockLevelSchema),
     purchases: createReadRepository(paths.purchases(businessId), purchaseSchema),
     cashEntries: createReadRepository(paths.cashEntries(businessId), cashEntrySchema),
+    deliveryNotes: createReadRepository(paths.deliveryNotes(businessId), deliveryNoteSchema),
+    creditNotes: createReadRepository(paths.creditNotes(businessId), creditNoteSchema),
+    debitNotes: createReadRepository(paths.debitNotes(businessId), debitNoteSchema),
+    expenses: createReadRepository(paths.expenses(businessId), expenseSchema),
+    expenseCategories: createReadRepository(paths.expenseCategories(businessId), expenseCategorySchema),
     businessSettings: createDocumentReader(paths.settingsBusiness(businessId), businessSettingsSchema),
   };
 }
 
 // Additional entity schemas are exported for future repositories/services as their modules land.
 export {
-  quotationSchema, deliveryNoteSchema, creditNoteSchema, debitNoteSchema, purchaseSchema,
-  stockLevelSchema, expenseSchema, cashEntrySchema, activityLogSchema, integrationSettingsSchema,
+  quotationSchema, purchaseSchema,
+  stockLevelSchema, activityLogSchema, integrationSettingsSchema,
 };

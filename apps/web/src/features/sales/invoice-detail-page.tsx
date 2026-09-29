@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Trash2, Printer, IndianRupee } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Printer, IndianRupee, FileMinus } from 'lucide-react';
 import {
-  formatINR, newRequestId, outstandingOf, type Invoice, type Payment, type PaymentStatus,
+  formatINR, newRequestId, outstandingOf, type Invoice, type Payment, type PaymentStatus, type CreditNote,
 } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { SectionCard } from '@/components/premium';
@@ -35,6 +35,7 @@ export function InvoiceDetailPage() {
   const { data: inv, loading, error, notFound, reload } = useEntity(repos.invoices, id);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [payOpen, setPayOpen] = useState(false);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -42,6 +43,10 @@ export function InvoiceDetailPage() {
     void repos.payments
       .list({ filters: [{ field: 'targetType', op: '==', value: 'invoice' }, { field: 'targetId', op: '==', value: id }], orderByField: 'date', direction: 'desc', limit: 50 })
       .then((p) => !cancelled && setPayments(p.items))
+      .catch(() => undefined);
+    void repos.creditNotes
+      .list({ filters: [{ field: 'deletedAt', op: '==', value: null }, { field: 'invoiceId', op: '==', value: id }], orderByField: 'date', direction: 'desc', limit: 50 })
+      .then((p) => !cancelled && setCreditNotes(p.items))
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [id, repos, inv]);
@@ -85,6 +90,7 @@ export function InvoiceDetailPage() {
             <Button variant="ghost" onClick={() => navigate('/sales/invoices')}><ArrowLeft /> Back</Button>
             <Button variant="outline" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer /> Print</Button>
             {outstanding > 0 && can('payments.record') && <Button variant="outline" onClick={() => setPayOpen(true)}><IndianRupee /> Record payment</Button>}
+            {can('creditNotes.manage') && <Button variant="outline" onClick={() => navigate(`/sales/credit-notes/new?invoiceId=${inv.id}`)}><FileMinus /> Issue credit note</Button>}
             {can('sales.edit') && <Button variant="outline" onClick={() => navigate(`/sales/invoices/${inv.id}/edit`)}><Pencil /> Edit</Button>}
             {can('sales.delete') && <Button variant="outline" onClick={() => void onDelete()}><Trash2 /> Delete</Button>}
           </div>
@@ -180,6 +186,24 @@ export function InvoiceDetailPage() {
           </div>
         </SectionCard>
       </div>
+
+      {creditNotes.length > 0 && (
+        <SectionCard title="Credit Notes">
+          <div className="flex flex-col gap-2">
+            {creditNotes.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => navigate(`/sales/credit-notes/${c.id}`)}
+                className="flex items-center justify-between rounded-md border border-border p-3 text-left text-sm transition hover:bg-accent"
+              >
+                <span><span className="num font-medium">{c.number}</span> · {c.date}{c.restock ? ' · restocked' : ''}</span>
+                <span className="num">{formatINR(c.grandTotalPaise)}</span>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {payOpen && <RecordPaymentDialog invoice={inv as Invoice} open={payOpen} onOpenChange={setPayOpen} onDone={reload} />}
     </div>

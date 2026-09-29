@@ -63,6 +63,62 @@ export interface BuildResult {
   cogsTotalPaise: number;
 }
 
+export interface DraftDeliveryNoteLine {
+  productId: string;
+  variantId: string;
+  unit: string;
+  qty: number;
+  referenceRatePaise: number;
+}
+export interface BuiltDeliveryNoteLine {
+  lineId: string;
+  productId: string;
+  variantId: string;
+  nameSnapshot: string;
+  codeSnapshot: string;
+  hsnSnapshot: string;
+  unit: string;
+  qty: number;
+  baseQty: number;
+  referenceRatePaise: number;
+}
+
+/**
+ * Build authoritative Delivery Note lines (BR-DN-02): reference-value only, NO GST computed at
+ * all — a DN never touches the tax engine. Snapshots name/code/HSN and converts to base units,
+ * same as invoice lines, but with no tax/cost fields (BR-DN-02).
+ */
+export function buildDeliveryNoteLines(
+  drafts: readonly DraftDeliveryNoteLine[],
+  products: Map<string, ProductData>,
+): { lines: BuiltDeliveryNoteLine[]; referenceValuePaise: number } {
+  if (drafts.length === 0) throw appError('VALIDATION_FAILED', 'A delivery note needs at least one line.');
+  let referenceValuePaise = 0;
+  const lines = drafts.map((d) => {
+    const p = products.get(d.productId);
+    if (!p || p.deletedAt != null) throw appError('NOT_FOUND', `Product not found: ${d.productId}`);
+    const variant = (p.variants ?? []).find((v) => v.id === d.variantId);
+    if (!variant) throw appError('NOT_FOUND', `Product variant not found: ${d.variantId}`);
+    if (!(d.qty > 0)) throw appError('VALIDATION_FAILED', 'Quantity must be greater than zero.');
+    const factor = (p.altUnits ?? []).find((a) => a.name === d.unit)?.factor;
+    const baseQty = toBaseQty(d.qty, factor);
+    referenceValuePaise += Math.round(d.referenceRatePaise * d.qty);
+    return {
+      lineId: newId(),
+      productId: d.productId,
+      variantId: d.variantId,
+      nameSnapshot: variantLabel(p.name, variant),
+      codeSnapshot: p.barcode ?? '',
+      hsnSnapshot: p.hsn ?? '',
+      unit: d.unit,
+      qty: d.qty,
+      baseQty,
+      referenceRatePaise: d.referenceRatePaise,
+    };
+  });
+  return { lines, referenceValuePaise };
+}
+
 function variantLabel(name: string, v?: { size?: string; color?: string }): string {
   const extra = [v?.size, v?.color].filter((s) => s && s.trim()).join(' / ');
   return extra ? `${name} (${extra})` : name;

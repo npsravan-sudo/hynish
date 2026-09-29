@@ -5,7 +5,10 @@
  * server-side; the client cannot widen its own access via the payload.
  */
 import { z } from 'zod';
-import { createInvoiceSchema, createQuotationSchema, createPaymentSchema } from '@hynish/domain';
+import {
+  createInvoiceSchema, createQuotationSchema, createPaymentSchema,
+  createDeliveryNoteSchema, createCreditNoteSchema,
+} from '@hynish/domain';
 
 const businessId = z.string().min(1);
 const requestId = z.string().min(1).max(200);
@@ -40,3 +43,19 @@ export const deleteInvoiceRequest = z.object({
   requestId,
 });
 export type DeleteInvoiceRequest = z.infer<typeof deleteInvoiceRequest>;
+
+/** Save (create, or edit while still `pending` — BR-DN-03) a Delivery Note. No GST, no accounting. */
+export const saveDeliveryNoteRequest = createDeliveryNoteSchema.extend({
+  businessId,
+  id: z.string().min(1).optional(),
+  requestId,
+});
+export type SaveDeliveryNoteRequest = z.infer<typeof saveDeliveryNoteRequest>;
+
+/** Mark a pending Delivery Note returned (BR-DN-05): restores stock, sets status `returned`. */
+export const markDeliveryNoteReturnedRequest = z.object({ businessId, id: z.string().min(1), requestId });
+export type MarkDeliveryNoteReturnedRequest = z.infer<typeof markDeliveryNoteReturnedRequest>;
+
+/** Issue a Credit Note against an existing invoice (BR-CN-01..04). */
+export const saveCreditNoteRequest = createCreditNoteSchema.extend({ businessId, requestId });
+export type SaveCreditNoteRequest = z.infer<typeof saveCreditNoteRequest>;

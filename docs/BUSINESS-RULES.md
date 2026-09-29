@@ -446,3 +446,21 @@ are denied (`tests/rules/inventory.test.ts`); every mutation is idempotent by re
 
 Server-authoritative: client writes to accounts/journalEntries/cashEntries are denied
 (`tests/rules/accounting.test.ts`); every mutation is idempotent by requestId.
+
+## Phase 8 — Business Operations rules (implemented)
+
+| Rule | Where enforced | Test |
+|---|---|---|
+| BR-EXP-01 amount>0 and a category required; posts Dr category account / Cr Cash-or-Bank | `accounting/expenses.ts::saveExpense`, `posting.ts::journalLinesForExpense` | `posting.test.ts` (domain) |
+| BR-EXP-02 category name snapshotted; deleting a category never rewrites past expenses | `expenses.ts` (`categoryNameSnapshot`) | schema/code review |
+| §6.4 "always reverses any prior entry before re-posting" — edit/delete never adjusts in place | `expenses.ts::saveExpense/deleteExpense` (void-then-repost, same pattern as invoices/purchases) | rules-tested for write-denial (`operations.test.ts`) |
+| BR-ACC-19 seedExpenseCategories: 12 default categories + linked expense accounts, code 5100+10n | `accounting/seed-expense-categories.ts` | domain constants (`DEFAULT_EXPENSE_CATEGORIES`) |
+| BR-DN-01..09 stock-out on save, no GST, no journal, pending→invoiced/returned lifecycle | `sales/delivery-notes.ts` | rules-tested for write-denial/read-gating (`operations.test.ts`) |
+| BR-CN-01..06 issued against an invoice; qty clamped to `[0, original−alreadyCredited]`; inherits invoice taxType/gstApplicable; Dr Sales/Dr GST-Output/Cr AR; restock also Dr Inventory/Cr COGS + `sale_return` | `sales/credit-notes.ts`, `posting.ts::journalLinesForCreditNote(Cogs)`, `posting.ts::clampEligibleQty` | `posting.test.ts` (domain: journal lines + clamping) |
+| BR-DBN-01..04 issued against a purchase; same clamping; no GST (`amount=qty×rate`); Dr AP/Cr Inventory; restock removes stock (`purchase_return`) | `purchases/debit-notes.ts`, `posting.ts::journalLinesForDebitNote` | `posting.test.ts` (domain) |
+| §68 no separate "Sales Return"/"Purchase Return" document — Credit/Debit Notes ARE that mechanism | *(deliberately not built)* | see `docs/PHASE-8-COMPLETION.md` |
+| §68 no Bank Operations / Cash-Bank transfer feature — not documented in the source | *(deliberately not built)* | see `docs/OPEN-QUESTIONS.md`, `docs/PHASE-8-COMPLETION.md` |
+| Neither Credit Notes nor Debit Notes support edit/delete — not documented in the source | *(deliberately not built)* | see `docs/PHASE-8-COMPLETION.md` |
+
+Server-authoritative: client writes to expenseCategories/expenses/deliveryNotes/creditNotes/debitNotes
+are denied (`tests/rules/operations.test.ts`); every mutation is idempotent by requestId.

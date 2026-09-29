@@ -160,6 +160,18 @@ export const expenseSchema = entity.merge(softDelete).extend({
 });
 export type Expense = z.infer<typeof expenseSchema>;
 
+/** Draft expense the client submits (BR-EXP-01, TD §6.4). Server resolves the category's expense
+ * account and posts the journal — the client never submits accounting data. */
+export const createExpenseSchema = z.object({
+  date: businessDate,
+  locationId: z.string().min(1),
+  categoryId: z.string().min(1),
+  amountPaise: nonNegPaise.refine((v) => v > 0, 'Amount must be greater than zero.'),
+  mode: paymentMode,
+  notes: z.string().default(''),
+});
+export type CreateExpense = z.infer<typeof createExpenseSchema>;
+
 export const cashEntrySchema = entity.merge(softDelete).extend({
   date: businessDate,
   locationId: z.string().min(1),

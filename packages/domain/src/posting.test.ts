@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   journalLinesForInvoice, journalLinesForInvoiceCogs,
   journalLinesForPaymentIn, journalLinesForPaymentOut, journalLinesForPurchase,
+  journalLinesForExpense, journalLinesForCreditNote, journalLinesForCreditNoteCogs, journalLinesForDebitNote,
+  clampEligibleQty,
   derivePaymentStatus, outstandingOf, isOutstanding,
 } from './posting.js';
 import { validateJournal } from './accounting.js';
@@ -109,5 +111,77 @@ describe('payment status & outstanding (BR-PAY-02, BR-DUE-01/02)', () => {
   it('isOutstanding only when the gap exceeds 50 paise', () => {
     expect(isOutstanding(10000, 9949)).toBe(true);
     expect(isOutstanding(10000, 9960)).toBe(false);
+  });
+});
+
+describe('journalLinesForExpense (BR-EXP-01, TD §6.1.5)', () => {
+  it('Dr the category account / Cr Cash for a Cash-mode expense, balanced', () => {
+    const lines = journalLinesForExpense(50000, 'acc-rent', 'Cash');
+    expect(lines).toEqual([
+      { accountId: 'acc-rent', debitPaise: 50000, creditPaise: 0 },
+      { accountId: 'acc-cash', debitPaise: 0, creditPaise: 50000 },
+    ]);
+    expect(dr(lines)).toBe(cr(lines));
+    expect(validateJournal(lines).ok).toBe(true);
+  });
+  it('routes any non-Cash mode to acc-bank (BR-PAY-04)', () => {
+    const lines = journalLinesForExpense(20000, 'acc-rent', 'UPI');
+    expect(lines.find((l) => l.accountId === 'acc-bank')?.creditPaise).toBe(20000);
+  });
+  it('produces no lines for a non-positive amount', () => {
+    expect(journalLinesForExpense(0, 'acc-rent', 'Cash')).toEqual([]);
+  });
+});
+
+describe('journalLinesForCreditNote (BR-CN-03)', () => {
+  it('Dr Sales Revenue + Dr GST Output / Cr Accounts Receivable, balanced', () => {
+    const lines = journalLinesForCreditNote(10000, 1800, 11800);
+    expect(lines).toContainEqual({ accountId: 'acc-sales', debitPaise: 10000, creditPaise: 0 });
+    expect(lines).toContainEqual({ accountId: 'acc-gst-output', debitPaise: 1800, creditPaise: 0 });
+    expect(lines).toContainEqual({ accountId: 'acc-ar', debitPaise: 0, creditPaise: 11800 });
+    expect(dr(lines)).toBe(cr(lines));
+    expect(validateJournal(lines).ok).toBe(true);
+  });
+  it('omits the tax line for a Without-GST original invoice (BR-CN-02)', () => {
+    const lines = journalLinesForCreditNote(10000, 0, 10000);
+    expect(lines.find((l) => l.accountId === 'acc-gst-output')).toBeUndefined();
+    expect(dr(lines)).toBe(cr(lines));
+  });
+});
+
+describe('journalLinesForCreditNoteCogs (BR-CN-04, restock only)', () => {
+  it('Dr Inventory / Cr COGS — the reverse of invoice COGS', () => {
+    const lines = journalLinesForCreditNoteCogs(4000);
+    expect(lines).toEqual([
+      { accountId: 'acc-inventory', debitPaise: 4000, creditPaise: 0 },
+      { accountId: 'acc-cogs', debitPaise: 0, creditPaise: 4000 },
+    ]);
+    expect(dr(lines)).toBe(cr(lines));
+  });
+  it('produces no lines when nothing is restocked', () => {
+    expect(journalLinesForCreditNoteCogs(0)).toEqual([]);
+  });
+});
+
+describe('journalLinesForDebitNote (BR-DBN-02/03)', () => {
+  it('Dr Accounts Payable / Cr Inventory, no GST', () => {
+    const lines = journalLinesForDebitNote(5000);
+    expect(lines).toEqual([
+      { accountId: 'acc-ap', debitPaise: 5000, creditPaise: 0 },
+      { accountId: 'acc-inventory', debitPaise: 0, creditPaise: 5000 },
+    ]);
+    expect(dr(lines)).toBe(cr(lines));
+  });
+});
+
+describe('clampEligibleQty (BR-CN-01 / BR-DBN-01)', () => {
+  it('clamps to the remaining eligible quantity', () => {
+    expect(clampEligibleQty(10, 3, 8)).toBe(7); // only 7 left of 10 after 3 already returned
+    expect(clampEligibleQty(10, 0, 5)).toBe(5);
+  });
+  it('never goes negative and never exceeds what remains', () => {
+    expect(clampEligibleQty(10, 10, 5)).toBe(0); // nothing left
+    expect(clampEligibleQty(10, 0, -3)).toBe(0);
+    expect(clampEligibleQty(10, 12, 5)).toBe(0); // already over-returned (shouldn't happen, but never negative)
   });
 });

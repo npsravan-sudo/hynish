@@ -413,3 +413,27 @@ above is the target; the items below are implemented, tested and in the reposito
 - Reconciliation helpers (`findUnbalancedEntries`, `findDuplicatePostedRefs`, `findOrphanAccountRefs`,
   §49) are detection-only — they return findings for an operator to review; nothing calls them to
   auto-mutate the ledger.
+
+## Phase 8 — Business Operations (implemented)
+
+- All writes are server-authoritative callables running App Check + auth + Zod →
+  `resolveActor` → `assertPermission` → `assertLocationAccess`. `expenses.manage` gates expense
+  create/edit/delete (the source has no separate permission split for those); `deliveryNotes.manage`
+  gates DN create/edit/mark-returned; `creditNotes.manage`/`debitNotes.manage` gate issuing a CN/DBN.
+- Firestore rules deny all client writes to `expenseCategories`, `expenses`, `deliveryNotes`,
+  `creditNotes`, `debitNotes`; reads are permission-gated (+ location for `expenses`/`deliveryNotes`)
+  — `tests/rules/operations.test.ts` covers denial, permission-gating and cross-business isolation.
+- **Never trusts a client-computed "eligible quantity."** `saveCreditNote`/`saveDebitNote` read
+  every prior Credit/Debit Note against the same invoice/purchase inside the SAME transaction and
+  clamp server-side via `clampEligibleQty` — a client-supplied `qty` can only ever be reduced by the
+  server, never honored past what remains.
+- A Credit/Debit Note's line pricing (rate, discount, GST rate, tax type) is always read from the
+  ORIGINAL invoice/purchase line stored in Firestore, never accepted from the client — this is what
+  makes BR-CN-02 ("inherits the original invoice's tax type") a server guarantee, not a UI default.
+- Cross-business/location isolation for all five new collections is proven the same way as every
+  earlier phase: `businessId` is never taken from the client payload for authorization, and every
+  document read inside a transaction (invoice, purchase, expense category) is checked for
+  `deletedAt`/ownership before its data is trusted.
+- No generic manual return/adjustment callable exists beyond `saveCreditNote`/`saveDebitNote`
+  themselves, and neither supports edit or delete — reducing the reachable state space to exactly
+  what TD documents, per §65.

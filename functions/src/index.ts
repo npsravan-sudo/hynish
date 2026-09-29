@@ -39,3 +39,14 @@ export { seedChartOfAccounts } from './accounting/seed-accounts.js';
 export { saveAccount } from './accounting/save-account.js';
 export { deleteAccount } from './accounting/delete-account.js';
 export { logCashEntry } from './accounting/cash-book.js';
+
+// Business Operations (Phase 8) — Expenses, Delivery Notes, Credit Notes (sales-return equivalent),
+// Debit Notes (purchase-return equivalent). No standalone "Sales Return"/"Purchase Return" document
+// exists in the source — Credit/Debit Notes ARE that mechanism (with an optional restock flag);
+// see docs/PHASE-8-COMPLETION.md. No Bank Operations/fund-transfer callable exists either — the
+// source has no such feature (only Cash-vs-Bank routing inside postJournal), so none is built here.
+export { seedExpenseCategories } from './accounting/seed-expense-categories.js';
+export { saveExpense, deleteExpense } from './accounting/expenses.js';
+export { saveDeliveryNote, markDeliveryNoteReturned } from './sales/delivery-notes.js';
+export { saveCreditNote } from './sales/credit-notes.js';
+export { saveDebitNote } from './purchases/debit-notes.js';

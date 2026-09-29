@@ -586,3 +586,32 @@ packages/domain               (pure: money, dates, GST, numbering, accounting, i
   generic `reverseJournal` callable — TD §6.1 states the business user never touches a
   debit/credit screen directly except in the Chart of Accounts itself; reversal only happens via
   the existing Sales/Purchases void-then-repost edit/delete flows (BR-ACC-05).
+
+## Phase 8 — Business Operations flow (implemented)
+
+- **Expenses** reuse the exact reverse-then-repost pattern already established for invoices/
+  purchases: `saveExpense` always voids the prior posted journal entry for the expense (a no-op on
+  create) then posts a fresh one via `journalLinesForExpense` — never an in-place accounting
+  adjustment (TD §6.4). `seedExpenseCategories` mirrors `seedChartOfAccounts` exactly: idempotent,
+  creates only what's missing, auto-generates each category's linked expense account.
+- **Delivery Notes** reuse the invoice's stock-movement pattern (undo-then-reapply on edit) but
+  post NO accounting entry at all (BR-DN-09) — a DN is purely a stock + document event. Converting
+  a pending DN to an invoice reuses the EXISTING `finalizeInvoice({source:{type:'delivery_note'}})`
+  path built in Phase 5 (unchanged); this phase only adds the DN's own create/edit/mark-returned
+  side.
+- **Credit Notes and Debit Notes are the source's entire return mechanism** — there is no separate
+  "Sales Return"/"Purchase Return" document type (§68, do not invent). Both reuse
+  `postJournalTx`/`applyMovementTx` exactly as every other module does (§53 no duplicate accounting
+  logic): a Credit Note's quantity is clamped server-side via `clampEligibleQty` against every
+  prior Credit Note on the same invoice line, computed from a fresh Firestore read inside the same
+  transaction — never trusting a client-supplied "remaining eligible" figure. A Debit Note mirrors
+  this exactly against a purchase.
+- **No Bank Operations / Cash-Bank transfer module exists.** The source has no fund-transfer
+  feature between Cash and Bank — `cashOrBankAccountId()` (Phase 5) already routes every non-Cash
+  payment mode to a single Bank account, and that remains the entire "bank" surface of this system
+  (see `docs/OPEN-QUESTIONS.md`).
+- **Single-purpose callables, not extracted cores:** `saveExpense`, `saveDeliveryNote`,
+  `saveCreditNote`, `saveDebitNote` each own their own transaction inline, matching the codebase's
+  established convention that only logic reused by multiple callers (`post-core.ts`,
+  `stock-core.ts`, `reserve-core.ts`) gets extracted into a shared module — none of these four is
+  called from anywhere but its own UI form.

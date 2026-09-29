@@ -86,6 +86,30 @@ export function InvoiceFormPage() {
     return () => { cancelled = true; };
   }, [fromQuotation, isEdit, repos]);
 
+  // Prefill from a Delivery Note conversion (?fromDeliveryNote=<id>) (BR-DN-04). The DN's reference
+  // rate becomes the invoice line's rate; GST is computed fresh from the product's current rate,
+  // since a DN never carries a GST rate at all (BR-DN-02). Converted lines skip stock deduction —
+  // the goods already left via the DN (server-enforced regardless of what the client sends).
+  const fromDeliveryNote = searchParams.get('fromDeliveryNote');
+  useEffect(() => {
+    if (!fromDeliveryNote || isEdit) return;
+    let cancelled = false;
+    void repos.deliveryNotes.get(fromDeliveryNote).then((dn) => {
+      if (cancelled || !dn) return;
+      setCustomerId(dn.customerId);
+      setGstApplicable(true);
+      setRows(dn.lines.map((l) => {
+        const p = products.find((x) => x.id === l.productId);
+        return {
+          key: l.lineId, productId: l.productId, variantId: l.variantId, unit: l.unit,
+          qty: l.qty, ratePaise: l.referenceRatePaise, discountBp: 0, gstRateBp: p?.gstRateBp ?? 0,
+        };
+      }));
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromDeliveryNote, isEdit, repos]);
+
   const customer = customers.find((c) => c.id === customerId) ?? null;
   const sellerState = settings?.stateCode ?? '';
   const taxType = taxTypeFor(sellerState, customer?.stateCode ?? null);
@@ -105,7 +129,9 @@ export function InvoiceFormPage() {
       initialPaidPaise: isEdit ? 0 : initialPaidPaise, // edit never changes amount received (BR-INV-12)
       notes,
       dueDate: dueDate || null,
-      source: fromQuotation && !isEdit ? { type: 'quotation', id: fromQuotation } : null,
+      source: !isEdit && fromQuotation ? { type: 'quotation', id: fromQuotation }
+        : !isEdit && fromDeliveryNote ? { type: 'delivery_note', id: fromDeliveryNote }
+        : null,
       confirmations: [],
       requestId: requestId.current,
       acknowledgePastMonth,

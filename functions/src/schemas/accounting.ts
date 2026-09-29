@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 import {
-  createAccountSchema, CASH_IN_CATEGORIES, CASH_OUT_CATEGORIES, PAYMENT_MODES, isValidBusinessDate,
+  createAccountSchema, createExpenseSchema, CASH_IN_CATEGORIES, CASH_OUT_CATEGORIES, PAYMENT_MODES, isValidBusinessDate,
 } from '@hynish/domain';
 
 const businessId = z.string().min(1);
@@ -37,3 +37,16 @@ export const logCashEntryRequest = z.object({
   requestId,
 });
 export type LogCashEntryRequest = z.infer<typeof logCashEntryRequest>;
+
+/** Save (create or edit) a Daily Expense (BR-EXP-01, TD §6.4). Edit always reverses the prior
+ * journal entry and re-posts (TD §6.4) — never an in-place accounting adjustment. */
+export const saveExpenseRequest = createExpenseSchema.extend({
+  businessId,
+  id: z.string().min(1).optional(),
+  requestId,
+});
+export type SaveExpenseRequest = z.infer<typeof saveExpenseRequest>;
+
+/** Delete = reverse its journal entry, then soft-delete (TD §6.4 "reverses then removes"). */
+export const deleteExpenseRequest = z.object({ businessId, id: z.string().min(1), requestId });
+export type DeleteExpenseRequest = z.infer<typeof deleteExpenseRequest>;

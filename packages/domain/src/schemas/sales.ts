@@ -156,6 +156,26 @@ export const deliveryNoteSchema = entity.merge(softDelete).extend({
 });
 export type DeliveryNote = z.infer<typeof deliveryNoteSchema>;
 
+/** Draft DN line the client submits — business inputs only (BR-DN-02: rate is a reference value,
+ * never taxed); the server snapshots name/code/HSN and converts to base units. */
+export const draftDeliveryNoteLineSchema = z.object({
+  productId: z.string().min(1),
+  variantId: z.string().min(1),
+  unit: z.string(),
+  qty,
+  referenceRatePaise: nonNegPaise,
+});
+export const createDeliveryNoteSchema = z.object({
+  locationId: z.string().min(1),
+  date: businessDate,
+  customerId: z.string().nullable(),
+  lines: z.array(draftDeliveryNoteLineSchema).min(1).max(500),
+  notes: z.string().default(''),
+  /** Stock shortage on a DN asks for confirmation, same as invoices (BR-DN-07). */
+  confirmations: z.array(z.enum(['STOCK_SHORTAGE'])).default([]),
+});
+export type CreateDeliveryNote = z.infer<typeof createDeliveryNoteSchema>;
+
 export const creditNoteSchema = entity.merge(softDelete).extend({
   number: z.string(),
   fy: z.string(),
@@ -180,6 +200,23 @@ export const creditNoteSchema = entity.merge(softDelete).extend({
   reason: z.string().default(''),
 });
 export type CreditNote = z.infer<typeof creditNoteSchema>;
+
+/** Draft CN line the client submits — only which invoice line and how much of it to credit
+ * (BR-CN-01). Rate/discount/GST/taxType all come from the ORIGINAL invoice line server-side, never
+ * from the client, so a credit note can never invent its own pricing. */
+export const draftCreditNoteLineSchema = z.object({
+  invoiceLineId: z.string().min(1),
+  qty,
+});
+export const createCreditNoteSchema = z.object({
+  invoiceId: z.string().min(1),
+  locationId: z.string().min(1),
+  date: businessDate,
+  restock: z.boolean().default(false),
+  lines: z.array(draftCreditNoteLineSchema).min(1),
+  reason: z.string().default(''),
+});
+export type CreateCreditNote = z.infer<typeof createCreditNoteSchema>;
 
 export const debitNoteLineSchema = z.object({
   purchaseLineId: z.string(),
@@ -206,3 +243,22 @@ export const debitNoteSchema = entity.merge(softDelete).extend({
   reason: z.string().default(''),
 });
 export type DebitNote = z.infer<typeof debitNoteSchema>;
+
+/** Draft DBN line — which purchase line and how much of it to debit-note (BR-DBN-01). Rate comes
+ * from the original purchase line server-side; `amount = qty × rate`, no GST (BR-DBN-02). */
+export const draftDebitNoteLineSchema = z.object({
+  purchaseLineId: z.string().min(1),
+  qty,
+});
+export const createDebitNoteSchema = z.object({
+  purchaseId: z.string().min(1),
+  locationId: z.string().min(1),
+  date: businessDate,
+  restock: z.boolean().default(false),
+  lines: z.array(draftDebitNoteLineSchema).min(1),
+  reason: z.string().default(''),
+  /** A restock removes stock (goods returned to the supplier) and may need the negative-stock
+   * override, the same as any other outbound movement (BR-STK-06). */
+  confirmations: z.array(z.enum(['NEGATIVE_STOCK'])).default([]),
+});
+export type CreateDebitNote = z.infer<typeof createDebitNoteSchema>;

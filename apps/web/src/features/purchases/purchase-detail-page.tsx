@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import { formatINR, newRequestId, outstandingOf, type PaymentStatus } from '@hynish/domain';
+import { ArrowLeft, Trash2, FilePlus } from 'lucide-react';
+import { formatINR, newRequestId, outstandingOf, type PaymentStatus, type DebitNote } from '@hynish/domain';
 import { PageHeader } from '@/components/layout/page-header';
 import { SectionCard } from '@/components/premium';
 import { Button } from '@/components/ui/button';
@@ -25,8 +26,20 @@ export function PurchaseDetailPage() {
   const service = usePurchasesService();
   const canOverride = useAuthStore((s) => s.hasPermission('stock.overrideNegative'));
   const canDelete = useAuthStore((s) => s.hasPermission('purchases.delete'));
+  const canDebitNote = useAuthStore((s) => s.hasPermission('debitNotes.manage'));
   const locations = useAuthStore((s) => s.locations);
   const { data: p, loading, error, notFound } = useEntity(repos.purchases, id);
+  const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    void repos.debitNotes
+      .list({ filters: [{ field: 'deletedAt', op: '==', value: null }, { field: 'purchaseId', op: '==', value: id }], orderByField: 'date', direction: 'desc', limit: 50 })
+      .then((r) => !cancelled && setDebitNotes(r.items))
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [id, repos]);
 
   if (loading) return <PageSkeleton />;
   if (error || notFound || !p) return <ErrorState title="Purchase not found" message={error ?? 'It may have been removed.'} />;
@@ -62,6 +75,7 @@ export function PurchaseDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => navigate('/inventory/purchases')}><ArrowLeft /> Back</Button>
+            {canDebitNote && <Button variant="outline" onClick={() => navigate(`/inventory/debit-notes/new?purchaseId=${p.id}`)}><FilePlus /> Issue debit note</Button>}
             {canDelete && <Button variant="outline" onClick={() => void onDelete(false)}><Trash2 /> Delete</Button>}
           </div>
         }
@@ -106,6 +120,24 @@ export function PurchaseDetailPage() {
           </SectionCard>
         </div>
       </div>
+
+      {debitNotes.length > 0 && (
+        <SectionCard title="Debit Notes">
+          <div className="flex flex-col gap-2">
+            {debitNotes.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => navigate(`/inventory/debit-notes/${d.id}`)}
+                className="flex items-center justify-between rounded-md border border-border p-3 text-left text-sm transition hover:bg-accent"
+              >
+                <span><span className="num font-medium">{d.number}</span> · {d.date}{d.restock ? ' · restocked' : ''}</span>
+                <span className="num">{formatINR(d.totalPaise)}</span>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }

@@ -657,3 +657,48 @@ The full field mapping is in `MIGRATION-PLAN.md §5`. Key structural changes:
   Cloud Function.
 - Indexes: journalEntries (status+date; locationId+date; refType+date; accountIds CONTAINS+date
   ASCENDING — chronological order for General Ledger running balances); cashEntries (locationId+date).
+
+## Phase 8 — Business Operations collections (implemented)
+
+- **`expenseCategories/{id}`** — deterministic id `exp-cat-<slug>` (BR-EXP-04, TD §6.1.2): name,
+  slug, `accountId` (its linked expense account), `isDefault`. The 12 default categories (Rent,
+  Electricity, Water, Staff Salary/Wages, Transport/Delivery, Packing Material,
+  Stationery/Printing, Maintenance & Repairs, Marketing/Advertising, Tea/Refreshments, Bank
+  Charges, Other) and their linked `accounts` (deterministic id `acc-<slug>`, code auto-assigned
+  starting 5100 stepping by 10, BR-ACC-19) are seeded once by `seedExpenseCategories`, idempotently
+  — mirroring `seedChartOfAccounts`.
+- **`expenses/{id}`** — Daily Expenses (BR-EXP-01/02, TD §6.4): date, locationId, categoryId,
+  `categoryNameSnapshot` (frozen at time of expense — deleting a category never rewrites past
+  expenses, BR-EXP-02), amountPaise (>0), mode, notes, `journalEntryId` (the current posted entry;
+  a save always voids the prior one and posts a fresh one, TD §6.4).
+- **`deliveryNotes/{id}`** — unchanged shape from Phase 3 (number, fy, seq, date, locationId,
+  customerId, customerSnapshot, lines[] with `referenceRatePaise` only — no GST, BR-DN-02,
+  referenceValuePaise, `status` pending/invoiced/returned, invoiceId, returnedAt, notes). First
+  implemented server-side this phase: `saveDeliveryNote` (create/edit-while-pending, stock-out
+  `delivery_out`), `markDeliveryNoteReturned` (stock-in `delivery_return`). No accounting entry is
+  ever posted for a DN (BR-DN-09 — none documented).
+- **`creditNotes/{id}`** — unchanged shape from Phase 3 (number, fy, seq, date, locationId,
+  invoiceId, invoiceNumber, customerId/Snapshot, taxType, gstApplicable — both inherited from the
+  invoice, BR-CN-02, `restock`, lines[] extending the invoice-line shape with `invoiceLineId`,
+  totals, reason). First implemented server-side this phase: `saveCreditNote` — the source's ONLY
+  sales-return mechanism (§68; no separate "Sales Return" document exists). Quantity is
+  server-clamped per line to `[0, originalQty − alreadyCreditedQty]` (BR-CN-01); restock posts a
+  `sale_return` stock movement + `credit_note_cogs` journal (Dr Inventory / Cr COGS).
+- **`debitNotes/{id}`** — unchanged shape from Phase 3 (number, fy, seq, date, locationId,
+  purchaseId, supplierId/Snapshot, `restock`, lines[] with `amountPaise = qty × rate` — no GST,
+  BR-DBN-02, totalPaise, reason). First implemented server-side this phase: `saveDebitNote` — the
+  source's ONLY purchase-return mechanism (§68; no separate "Purchase Return" document exists).
+  Same server-side clamping as Credit Notes; restock removes stock with a `purchase_return`
+  movement (goods returned to the supplier — the mirror of a Credit Note's restock).
+- Neither Credit Notes nor Debit Notes support edit or delete — none is documented in the source;
+  once issued, a CN/DBN stands (consistent with §65 do-not-invent).
+- No Bank Operations or Cash/Bank fund-transfer collection exists — the source has no such feature
+  (see `docs/OPEN-QUESTIONS.md`); Cash Book (Phase 7) and the Cash-vs-Bank routing inside
+  `postJournalTx` remain the entire scope of "cash/bank" in this system.
+- Client writes to `expenseCategories`, `expenses`, `deliveryNotes`, `creditNotes` and `debitNotes`
+  are denied; every mutation is a Cloud Function.
+- Indexes: expenses (deletedAt+date; deletedAt+locationId+date; deletedAt+categoryId+date);
+  deliveryNotes (deletedAt+date; deletedAt+status+date; deletedAt+locationId+date;
+  deletedAt+customerId+date); creditNotes (deletedAt+date; deletedAt+locationId+date;
+  deletedAt+invoiceId+date); debitNotes (deletedAt+date; deletedAt+locationId+date;
+  deletedAt+purchaseId+date).

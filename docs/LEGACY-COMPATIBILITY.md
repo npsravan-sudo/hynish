@@ -1251,3 +1251,39 @@ entry screen would be new functionality the source doesn't have, not a preserved
 ("do not invent … new reversal rules"), reversal is only ever the existing void-then-repost pattern
 already used by Sales/Purchases edit/delete (BR-ACC-05); there is no separate reversal mechanism to
 build. This is documented here rather than left as a silent gap.
+
+## Phase 8 — Business Operations parity (implemented)
+
+Preserved: Daily Expenses fields (date, location, category, amount>0, payment mode, notes) and
+category-name snapshotting so a deleted category never rewrites past expenses (BR-EXP-02); the
+"always reverse then repost" edit pattern (TD §6.4); Delivery Note fields and lifecycle
+(pending→invoiced/returned), reference-value-only rates with NO GST and NO journal entry
+(BR-DN-02/09); Credit Note capping/inheritance rules (original invoice's tax type and GST
+applicability, quantity clamped to what's still eligible, BR-CN-01/02) and its exact posting
+(Dr Sales Revenue, Dr GST Output if taxed, Cr Accounts Receivable, plus Dr Inventory/Cr COGS only
+if restocked, BR-CN-03/04); Debit Note's no-GST amount math and posting (Dr Accounts Payable /
+Cr Inventory, restock removes stock, BR-DBN-02/03/04); the exact document prefixes CN/DBN/DN
+(unchanged from Phase 3, verified against `DEFAULT_PREFIXES`).
+
+Legacy limitations NOT reproduced: client-authoritative expense/return posting → every one of
+`saveExpense`/`saveDeliveryNote`/`saveCreditNote`/`saveDebitNote` is a server-authoritative,
+idempotent, atomic Cloud Function; unrestricted Firestore writes → rules deny all client writes to
+the five new collections; a client-computed "how much is left to credit/debit-note" → the server
+re-derives it from a fresh read of every prior Credit/Debit Note inside the same transaction,
+never trusting the browser's number.
+
+**Deliberately not built, and why (§68):**
+- **A separate "Sales Return" or "Purchase Return" document.** The source has no such document
+  type — TD §5.5 describes Credit Notes (against an invoice) and Debit Notes (against a purchase),
+  each with an optional `restock` flag, as the complete return mechanism. Building a distinct
+  return document would be inventing a workflow the source doesn't have; Credit/Debit Notes ARE
+  the return mechanism, so the phase's return requirements are met by them directly.
+- **A Bank Operations screen or a Cash/Bank fund-transfer feature.** TD documents only that
+  `cashOrBankAccount(mode)` routes every non-Cash payment mode to a single Bank account
+  (`acc-bank`) — there is no bank transaction ledger, no bank reconciliation, and no transfer
+  operation anywhere in the source. Building one would be inventing accounting/payment behavior
+  the legacy app never had. Logged in `docs/OPEN-QUESTIONS.md` for completeness, though this is a
+  confirmed absence, not an open question requiring a decision.
+- **Edit or delete for a Credit Note or Debit Note.** Not documented in the source — once issued,
+  neither is edited or deleted in the legacy app. A price correction is its own new Credit Note
+  (restock unchecked); nothing is retracted in place.

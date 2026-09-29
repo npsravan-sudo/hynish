@@ -4,7 +4,7 @@
  * never write Firestore directly. Every critical financial value is (re)computed by the server; the
  * client only submits business inputs plus an idempotency requestId (§23, §27).
  */
-import type { CreateInvoice, CreateQuotation, CreatePayment } from '@hynish/domain';
+import type { CreateInvoice, CreateQuotation, CreatePayment, CreateDeliveryNote, CreateCreditNote } from '@hynish/domain';
 import { callable } from '@/lib/firebase/functions';
 
 type Confirmable = { requestId: string };
@@ -19,6 +19,15 @@ const saveQuotationFn = callable<
   CreateQuotation & { businessId: string; id?: string } & Confirmable,
   { quotationId: string; number: string }
 >('saveQuotation');
+const saveDeliveryNoteFn = callable<
+  CreateDeliveryNote & { businessId: string; id?: string } & Confirmable,
+  { deliveryNoteId: string; number: string }
+>('saveDeliveryNote');
+const markDeliveryNoteReturnedFn = callable<{ businessId: string; id: string } & Confirmable, { ok: boolean }>('markDeliveryNoteReturned');
+const saveCreditNoteFn = callable<
+  CreateCreditNote & { businessId: string } & Confirmable,
+  { creditNoteId: string; number: string }
+>('saveCreditNote');
 
 export function createSalesService(businessId: string) {
   return {
@@ -32,6 +41,13 @@ export function createSalesService(businessId: string) {
     },
     quotations: {
       save: (input: CreateQuotation & { id?: string } & Confirmable) => saveQuotationFn({ businessId, ...input }),
+    },
+    deliveryNotes: {
+      save: (input: CreateDeliveryNote & { id?: string } & Confirmable) => saveDeliveryNoteFn({ businessId, ...input }),
+      markReturned: (id: string, requestId: string) => markDeliveryNoteReturnedFn({ businessId, id, requestId }),
+    },
+    creditNotes: {
+      save: (input: CreateCreditNote & Confirmable) => saveCreditNoteFn({ businessId, ...input }),
     },
   };
 }

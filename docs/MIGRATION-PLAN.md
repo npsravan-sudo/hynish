@@ -284,3 +284,15 @@ At no point is legacy data deleted by the migration.
 - Cash Book entries migrate as `source: {type: 'manual', id: null}` rows (or with a real source id
   when traceable) — they never need a corresponding journal entry, since the source never posted
   them either (BR-CASH-02).
+
+## Phase 8 — Business Operations readiness (implemented)
+
+- Expense categories migrate with their legacy deterministic slug ids (`exp-cat-<slug>`) preserved,
+  so migrated expenses' `categoryId` references resolve correctly without a remapping step; each
+  category's linked expense account (`acc-<slug>`) migrates alongside it for the same reason.
+- Delivery Notes, Credit Notes and Debit Notes migrate with their legacy document numbers preserved
+  (their own `PREFIX/FY/SEQ` from the source) rather than being renumbered through the new
+  server-authoritative numbering service on import — the same "preserve legacy numbers on
+  migration, only NEW documents get server-reserved numbers" rule already applied to invoices.
+- A migrated Credit/Debit Note's `invoiceId`/`purchaseId` reference must resolve to an
+  already-migrated invoice/purchase — migration order matters here exactly as it does for payments.

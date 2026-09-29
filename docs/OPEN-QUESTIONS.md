@@ -205,6 +205,23 @@ Legacy features that must be preserved need libraries the contract doesn't list:
 - **Recommendation:** (b) for NGST, and (c) for any GST duplicates.
 - **Blocks:** Phase 7.
 
+### OQ-28 — Bank Operations / Cash-Bank fund transfer — **CONFIRMED ABSENT, not built (Phase 8)**
+- **Evidence:** TD documents only `cashOrBankAccount(mode)` (§6.1.6) — every non-Cash payment mode
+  (Bank Transfer, UPI, Cheque, Card, Other) books to a single Bank Account; the Chart of Accounts
+  never distinguishes them further. There is no bank transaction ledger, no bank reconciliation
+  screen, and no fund-transfer operation (Cash↔Bank) anywhere in `finance.js`, `admin.js`, or the
+  Cash Book model (§6.3) — "Bank Deposit" is only a Cash Book **out-category label**, not a linked
+  double entry against a bank ledger.
+- **Why listed here rather than just in the completion doc:** §68 requires an explicit gap record
+  whenever the source doesn't define a requested behavior, even when the honest answer is "this
+  doesn't exist" rather than "undecided."
+- **Decision needed:** none — this isn't a design choice pending an owner call, it's a confirmed
+  absence in the source. No Cloud Function, UI screen, or Firestore collection was built for
+  Bank Operations or a Cash/Bank transfer in Phase 8.
+- **Blocks:** nothing — flagged as a non-blocking, permanent scope boundary unless a future phase's
+  source review finds documentation this analysis missed.
+
 ---
 
-**Total open questions: 27**. 22 are REQUIRES DECISION and 6 are SOURCE NEEDED (OQ-10 is counted in both).
+**Total open questions: 28**. 22 are REQUIRES DECISION, 6 are SOURCE NEEDED (OQ-10 is counted in
+both), and 1 (OQ-28) is a confirmed absence recorded for completeness rather than a pending decision.

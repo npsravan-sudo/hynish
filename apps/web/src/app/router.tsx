@@ -62,8 +62,23 @@ const ProfitLossPage = page(() => import('@/features/accounting/profit-loss-page
 const BalanceSheetPage = page(() => import('@/features/accounting/balance-sheet-page'), 'BalanceSheetPage');
 const PayablesPage = page(() => import('@/features/accounting/payables-page'), 'PayablesPage');
 const CashBookPage = page(() => import('@/features/accounting/cash-book-page'), 'CashBookPage');
+const ExpenseListPage = page(() => import('@/features/accounting/expense-list-page'), 'ExpenseListPage');
+const ExpenseFormPage = page(() => import('@/features/accounting/expense-form-page'), 'ExpenseFormPage');
+const ExpenseDetailPage = page(() => import('@/features/accounting/expense-detail-page'), 'ExpenseDetailPage');
 
-const sales = () => import('@/features/sales/sales-pages');
+// Business Operations (Phase 8): Delivery Notes, Credit Notes (sales-return equivalent), Debit
+// Notes (purchase-return equivalent). There is no separate "Sales Return"/"Purchase Return"
+// document in the source — Credit/Debit Notes ARE that mechanism (docs/PHASE-8-COMPLETION.md).
+const DeliveryNoteListPage = page(() => import('@/features/sales/delivery-note-list-page'), 'DeliveryNoteListPage');
+const DeliveryNoteFormPage = page(() => import('@/features/sales/delivery-note-form-page'), 'DeliveryNoteFormPage');
+const DeliveryNoteDetailPage = page(() => import('@/features/sales/delivery-note-detail-page'), 'DeliveryNoteDetailPage');
+const CreditNoteListPage = page(() => import('@/features/sales/credit-note-list-page'), 'CreditNoteListPage');
+const CreditNoteFormPage = page(() => import('@/features/sales/credit-note-form-page'), 'CreditNoteFormPage');
+const CreditNoteDetailPage = page(() => import('@/features/sales/credit-note-detail-page'), 'CreditNoteDetailPage');
+const DebitNoteListPage = page(() => import('@/features/purchases/debit-note-list-page'), 'DebitNoteListPage');
+const DebitNoteFormPage = page(() => import('@/features/purchases/debit-note-form-page'), 'DebitNoteFormPage');
+const DebitNoteDetailPage = page(() => import('@/features/purchases/debit-note-detail-page'), 'DebitNoteDetailPage');
+
 const inv = () => import('@/features/inventory/inventory-pages');
 const acc = () => import('@/features/accounting/accounting-pages');
 const admin = () => import('@/features/admin/admin-pages');
@@ -97,9 +112,13 @@ const shellChildren: RouteObject[] = [
       { path: 'quotations/new', element: guarded(QuotationFormPage, 'quotations.manage') },
       { path: 'quotations/:id', element: guarded(QuotationDetailPage, 'quotations.view') },
       { path: 'quotations/:id/edit', element: guarded(QuotationFormPage, 'quotations.manage') },
-      { path: 'delivery-notes', element: guarded(page(sales, 'DeliveryNotesPage'), 'deliveryNotes.view') },
-      { path: 'credit-notes', element: guarded(page(sales, 'CreditNotesPage'), 'creditNotes.manage') },
-      { path: 'debit-notes', element: guarded(page(sales, 'DebitNotesPage'), 'debitNotes.manage') },
+      { path: 'delivery-notes', element: guarded(DeliveryNoteListPage, 'deliveryNotes.view') },
+      { path: 'delivery-notes/new', element: guarded(DeliveryNoteFormPage, 'deliveryNotes.manage') },
+      { path: 'delivery-notes/:id', element: guarded(DeliveryNoteDetailPage, 'deliveryNotes.view') },
+      { path: 'delivery-notes/:id/edit', element: guarded(DeliveryNoteFormPage, 'deliveryNotes.manage') },
+      { path: 'credit-notes', element: guarded(CreditNoteListPage, 'sales.view') },
+      { path: 'credit-notes/new', element: guarded(CreditNoteFormPage, 'creditNotes.manage') },
+      { path: 'credit-notes/:id', element: guarded(CreditNoteDetailPage, 'sales.view') },
       { path: 'payments', element: guarded(PaymentsPage, 'payments.record') },
       { path: 'dues', element: guarded(DuesPage, 'dues.view') },
     ],
@@ -123,6 +142,9 @@ const shellChildren: RouteObject[] = [
       { path: 'purchases', element: guarded(PurchaseListPage, 'purchases.view') },
       { path: 'purchases/new', element: guarded(PurchaseFormPage, 'purchases.manage') },
       { path: 'purchases/:id', element: guarded(PurchaseDetailPage, 'purchases.view') },
+      { path: 'debit-notes', element: guarded(DebitNoteListPage, 'purchases.view') },
+      { path: 'debit-notes/new', element: guarded(DebitNoteFormPage, 'debitNotes.manage') },
+      { path: 'debit-notes/:id', element: guarded(DebitNoteDetailPage, 'purchases.view') },
       { path: 'suppliers', element: guarded(SupplierListPage, 'suppliers.view') },
       { path: 'suppliers/new', element: guarded(SupplierFormPage, 'suppliers.manage') },
       { path: 'suppliers/:id', element: guarded(SupplierDetailPage, 'suppliers.view') },
@@ -157,7 +179,10 @@ const shellChildren: RouteObject[] = [
       { path: 'balance-sheet', element: guarded(BalanceSheetPage, 'accounting.view') },
       { path: 'payables', element: guarded(PayablesPage, 'purchases.view') },
       { path: 'cash-book', element: guarded(CashBookPage, 'cashbook.view') },
-      { path: 'expenses', element: guarded(page(acc, 'ExpensesPage'), 'expenses.view') },
+      { path: 'expenses', element: guarded(ExpenseListPage, 'expenses.view') },
+      { path: 'expenses/new', element: guarded(ExpenseFormPage, 'expenses.manage') },
+      { path: 'expenses/:id', element: guarded(ExpenseDetailPage, 'expenses.view') },
+      { path: 'expenses/:id/edit', element: guarded(ExpenseFormPage, 'expenses.manage') },
       { path: 'gst', element: guarded(page(acc, 'GstFilingPage'), 'gst.view') },
     ],
   },

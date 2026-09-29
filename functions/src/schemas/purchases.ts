@@ -4,7 +4,7 @@
  * an idempotency requestId; the server computes amounts, totals, stock-in and the payable state.
  */
 import { z } from 'zod';
-import { createPurchaseSchema } from '@hynish/domain';
+import { createPurchaseSchema, createDebitNoteSchema } from '@hynish/domain';
 
 const businessId = z.string().min(1);
 const requestId = z.string().min(1).max(200);
@@ -23,3 +23,8 @@ export const deletePurchaseRequest = z.object({
   confirmations: z.array(z.enum(['NEGATIVE_STOCK'])).default([]),
 });
 export type DeletePurchaseRequest = z.infer<typeof deletePurchaseRequest>;
+
+/** Issue a Debit Note against an existing purchase (BR-DBN-01..04) — the source's only
+ * purchase-return mechanism (§68, do not invent a separate "Purchase Return" document). */
+export const saveDebitNoteRequest = createDebitNoteSchema.extend({ businessId, requestId });
+export type SaveDebitNoteRequest = z.infer<typeof saveDebitNoteRequest>;
